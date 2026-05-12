@@ -1,0 +1,9 @@
+TIPO AFN;
+FONDO AZUL;
+ALFABETO { 'a', 'b' };
+INICIO s0;
+ESTADO s1;
+s0 -> s1 ['a'];
+s1 -> s2 [EPSILON];
+s2 -> s2 ['b'];
+FINAL s2;

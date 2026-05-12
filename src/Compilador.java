@@ -116,13 +116,32 @@ public class Compilador extends javax.swing.JFrame {
         Functions.colorTextPane(textsColor, panel_Codigo, new Color(40, 40, 40));
     }
 
-    private void getASTAsString(ASTNode node, String indent, StringBuilder sb) {
+    private void getASTAsString(ASTNode node, String prefix, StringBuilder sb) {
         if (node == null) {
             return;
         }
-        sb.append(indent).append(node.label).append("\n");
-        for (ASTNode child : node.children) {
-            getASTAsString(child, indent + "  ", sb);
+
+        // Agregar el nodo actual al StringBuilder
+        sb.append(prefix);
+        sb.append(node.label != null ? node.label : "Node");
+        sb.append("\n");
+
+        // Recorrer hijos
+        if (node.children != null) {
+            for (int i = 0; i < node.children.size(); i++) {
+                ASTNode child = node.children.get(i);
+                // Lógica para dibujar las líneas del árbol
+                boolean isLast = (i == node.children.size() - 1);
+                String newPrefix = prefix + (isLast ? "    " : "│   ");
+                String childPrefix = prefix + (isLast ? "└── " : "├── ");
+
+                // Llamada recursiva
+                // Pero para los hijos de los hijos pasamos newPrefix
+                getASTAsString(child, prefix + (isLast ? "    " : "│   "), sb);
+
+                // NOTA: Para simplificarlo visualmente, a veces es mejor hacerlo así:
+                // getASTAsString(child, prefix + "    ", sb);
+            }
         }
     }
 
@@ -478,13 +497,63 @@ public class Compilador extends javax.swing.JFrame {
     }//GEN-LAST:event_btn_GuardarCActionPerformed
 
     private void btn_CompilarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_CompilarActionPerformed
-        if (getTitle().contains("*") || getTitle().equals(title)) {
-            if (Directorio.Save()) {
-                compile();
-            }
-        } else {
-            compile();
+// 1. Limpiamos la consola y la lista de errores global
+    panel_Salida.setText("");
+    errors.clear(); // Asumiendo que tienes 'ArrayList<ErrorLSSL> errors;' en tu clase
+
+    // Obtenemos el código escrito en el editor
+    String input = panel_Codigo.getText();
+    
+    if (input.trim().isEmpty()) {
+        panel_Salida.setForeground(java.awt.Color.BLACK);
+        panel_Salida.setText("No hay código para compilar.");
+        return;
+    }
+
+    try {
+        // 2. Ejecutamos el Análisis Léxico y Sintáctico
+        // Usamos StringReader para leer directamente del JTextPane
+        Lexer lexer = new Lexer(new java.io.StringReader(input));
+        Parser parser = new Parser(lexer);
+        
+        // El parser procesa el código
+        parser.parse();
+        
+        // 3. Recolectamos los errores sintácticos detectados por el Parser
+        if (parser.errors != null && !parser.errors.isEmpty()) {
+            errors.addAll(parser.errors);
         }
+
+        /* * NOTA: Si tu Lexer también tiene una lista de errores léxicos
+         * (por ejemplo, lexer.errores), descomenta la siguiente línea para agregarlos:
+         * errors.addAll(lexer.errores);
+         */
+
+    } catch (Exception ex) {
+        // Atrapa errores fatales que detengan la compilación por completo
+        System.out.println("Error fatal durante la compilación: " + ex.getMessage());
+    }
+
+    // 4. Mostramos los resultados en la consola (panel_Salida)
+    if (errors.isEmpty()) {
+        // Si no hay errores, mostramos un mensaje de éxito en verde
+        panel_Salida.setForeground(new java.awt.Color(0, 150, 0)); // Verde
+        panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos ni sintácticos.");
+    } else {
+        // Si hay errores, los listamos en rojo
+        panel_Salida.setForeground(java.awt.Color.RED);
+        StringBuilder consola = new StringBuilder();
+        
+        consola.append("❌ Compilación fallida con ").append(errors.size()).append(" error(es):\n\n");
+        
+        for (ErrorLSSL error : errors) {
+            consola.append(" -> Línea ").append(error.getLine())
+                   .append(", Columna ").append(error.getColumn())
+                   .append(": ").append(error.getMessage()).append("\n");
+        }
+        
+        panel_Salida.setText(consola.toString());
+    }
     }//GEN-LAST:event_btn_CompilarActionPerformed
 
     private void btn_EjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_EjecutarActionPerformed
