@@ -497,63 +497,111 @@ public class Compilador extends javax.swing.JFrame {
     }//GEN-LAST:event_btn_GuardarCActionPerformed
 
     private void btn_CompilarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_CompilarActionPerformed
-// 1. Limpiamos la consola y la lista de errores global
-    panel_Salida.setText("");
-    errors.clear(); // Asumiendo que tienes 'ArrayList<ErrorLSSL> errors;' en tu clase
+        // 1. Limpiamos campos, tablas y consola
+        Functions.clearDataInTable(tbl_Token);
+        panel_Salida.setText("");
+        errors.clear();
+        tokens.clear();
+        codeHasBeenCompiled = false;
 
-    // Obtenemos el código escrito en el editor
-    String input = panel_Codigo.getText();
-    
-    if (input.trim().isEmpty()) {
-        panel_Salida.setForeground(java.awt.Color.BLACK);
-        panel_Salida.setText("No hay código para compilar.");
-        return;
-    }
-
-    try {
-        // 2. Ejecutamos el Análisis Léxico y Sintáctico
-        // Usamos StringReader para leer directamente del JTextPane
-        Lexer lexer = new Lexer(new java.io.StringReader(input));
-        Parser parser = new Parser(lexer);
-        
-        // El parser procesa el código
-        parser.parse();
-        
-        // 3. Recolectamos los errores sintácticos detectados por el Parser
-        if (parser.errors != null && !parser.errors.isEmpty()) {
-            errors.addAll(parser.errors);
+        String input = panel_Codigo.getText();
+        if (input.trim().isEmpty()) {
+            panel_Salida.setForeground(Color.BLACK);
+            panel_Salida.setText("No hay código para compilar.");
+            return;
         }
 
-        /* * NOTA: Si tu Lexer también tiene una lista de errores léxicos
-         * (por ejemplo, lexer.errores), descomenta la siguiente línea para agregarlos:
-         * errors.addAll(lexer.errores);
-         */
+        try {
+            // ==========================================
+            // PASO 1: ANÁLISIS LÉXICO (Llenar la tabla)
+            // ==========================================
+            Lexer lexerTabla = new Lexer(new java.io.StringReader(input));
+            while (true) {
+                java_cup.runtime.Symbol symbol = lexerTabla.next_token();
+                if (symbol == null || symbol.sym == sym.EOF) {
+                    break;
+                }
 
-    } catch (Exception ex) {
-        // Atrapa errores fatales que detengan la compilación por completo
-        System.out.println("Error fatal durante la compilación: " + ex.getMessage());
-    }
+                // Agregamos el token a la lista y a la tabla visual
+                if (symbol.value instanceof Token) {
+                    Token token = (Token) symbol.value;
+                    tokens.add(token);
 
-    // 4. Mostramos los resultados en la consola (panel_Salida)
-    if (errors.isEmpty()) {
-        // Si no hay errores, mostramos un mensaje de éxito en verde
-        panel_Salida.setForeground(new java.awt.Color(0, 150, 0)); // Verde
-        panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos ni sintácticos.");
-    } else {
-        // Si hay errores, los listamos en rojo
-        panel_Salida.setForeground(java.awt.Color.RED);
-        StringBuilder consola = new StringBuilder();
-        
-        consola.append("❌ Compilación fallida con ").append(errors.size()).append(" error(es):\n\n");
-        
-        for (ErrorLSSL error : errors) {
-            consola.append(" -> Línea ").append(error.getLine())
-                   .append(", Columna ").append(error.getColumn())
-                   .append(": ").append(error.getMessage()).append("\n");
+                    Object[] data = new Object[]{
+                        token.getLexicalComp(),
+                        token.getLexeme(),
+                        "[" + token.getLine() + ", " + token.getColumn() + "]"
+                    };
+                    Functions.addRowDataInTable(tbl_Token, data);
+
+                    // Si el token es un error léxico no reconocido (configurado en tu .flex)
+                    if (token.getLexicalComp().equals("ERROR_LEXICO")) {
+                        errors.add(new ErrorLSSL(1, "Error Léxico: Carácter no reconocido", token));
+                    }
+                }
+            }
+
+            // ==========================================
+            // PASO 2: ANÁLISIS SINTÁCTICO
+            // ==========================================
+            Lexer lexerParser = new Lexer(new java.io.StringReader(input));
+            Parser parser = new Parser(lexerParser);
+
+            try {
+                parser.parse();
+            } catch (Exception ex) {
+                // Cuando CUP encuentra un error sintáctico grave, lanza una Excepción.
+                // La atrapamos aquí para que no detenga el programa y nos permita 
+                // mostrar los errores que sí logró recolectar en parser.errors.
+            }
+
+            // Recolectamos los errores sintácticos guardados en el parser
+            if (parser.errors != null && !parser.errors.isEmpty()) {
+                errors.addAll(parser.errors);
+            }
+
+        } catch (Exception ex) {
+            System.out.println("Error general en la compilación: " + ex.getMessage());
+        }
+
+        // ==========================================
+        // PASO 3: MOSTRAR RESULTADOS EN LA CONSOLA
+        // ==========================================
+        if (errors.isEmpty()) {
+            // Si no hay errores, mensaje de éxito
+            panel_Salida.setForeground(new Color(0, 150, 0)); // Verde
+            panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos ni sintácticos.");
+        } else {
+            // Si hay errores, los mostramos en rojo con un formato claro
+            panel_Salida.setForeground(Color.RED);
+            StringBuilder consola = new StringBuilder();
+            
+            // 🌟 1. Extraemos TODO el texto directamente de tu editor visual
+            String codigoCompleto = panel_Codigo.getText();
+            // 🌟 2. Lo dividimos en un arreglo (cada elemento es una línea)
+            String[] lineasDeCodigo = codigoCompleto.split("\\r?\\n");
+            
+            consola.append("❌ Se encontraron ").append(errors.size()).append(" error(es):\n\n");
+            
+            for (ErrorLSSL error : errors) {
+                int numLinea = error.getLine();
+                String fragmentoCodigo = "<Línea vacía o no encontrada>";
+                
+                // Extraemos la línea de código exacta (los arreglos empiezan en 0, las líneas en 1)
+                if (numLinea > 0 && numLinea <= lineasDeCodigo.length) {
+                    fragmentoCodigo = lineasDeCodigo[numLinea - 1].trim(); 
+                }
+                
+                // 🌟 3. Damos un formato estructurado y fácil de leer
+                consola.append("► Error en la Línea ").append(numLinea).append(":\n");
+                consola.append("   Detalle : ").append(error.toString()).append("\n");
+                consola.append("   Código  : ").append(fragmentoCodigo).append("\n");
+                consola.append("--------------------------------------------------------\n");
+            }
+            panel_Salida.setText(consola.toString());
         }
         
-        panel_Salida.setText(consola.toString());
-    }
+        codeHasBeenCompiled = true;
     }//GEN-LAST:event_btn_CompilarActionPerformed
 
     private void btn_EjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_EjecutarActionPerformed

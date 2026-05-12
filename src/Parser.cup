@@ -13,17 +13,12 @@ parser code {:
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        
-        // Extraemos los datos necesarios del token
         String lexema = t.getLexeme();
-        int linea = t.getLine();
-        int columna = t.getColumn();
         
-        // Mensaje de error personalizado
-        String mensaje = "Error Sintáctico: Token inesperado '" + lexema + "'";
+        // Mejoramos el mensaje para dar una pista más exacta
+        String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) antes de esto?";
         
-        // Usamos el constructor de 3 parámetros: (linea, columna, mensaje)
-        errors.add(new ErrorLSSL(linea, columna, mensaje));
+        errors.add(new ErrorLSSL(1, descripcion, t));
     }
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
@@ -76,16 +71,14 @@ Statement ::=
     | FinalDef:f    {: RESULT = f; :}
     | StateDef:st   {: RESULT = st; :}
     | BackgroundDef:b {: RESULT = b; :}
-    | error PUNTO_Y_COMA // Recuperación de errores
+    | error PUNTO_Y_COMA
     ;
 
-// TIPO AFD; o TIPO AFN;
 ConfigType ::= TIPO AFD PUNTO_Y_COMA
     {: RESULT = new ASTNode("Config: TIPO AFD"); :}
     | TIPO AFN PUNTO_Y_COMA
     {: RESULT = new ASTNode("Config: TIPO AFN"); :};
 
-// ALFABETO { 'a', 'b', 'c' };
 AlphabetDef ::= ALFABETO LLAVE_IZQ SymbolList:sl LLAVE_DER PUNTO_Y_COMA
     {: 
         ASTNode node = new ASTNode("Definición_Alfabeto");
@@ -114,14 +107,12 @@ SymbolVal ::= COMILLA_SIMPLE IDENTIFICADOR:id COMILLA_SIMPLE
     | EPSILON
     {: RESULT = new ASTNode("Simbolo: EPSILON"); :};
 
-// INICIO q0;
 StartDef ::= INICIO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
         RESULT = new ASTNode("Estado_Inicial: " + t.getLexeme());
     :};
 
-// FINAL q1, q2;
 FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
     {:
         ASTNode node = new ASTNode("Estados_Finales");
@@ -144,7 +135,6 @@ StateList ::=
         RESULT = node;
     :};
 
-// q0 -> q1 ['a'];
 Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ SymbolVal:sv CORCHETE_DER PUNTO_Y_COMA
     {:
         Token tOri = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-6)).value;
@@ -156,14 +146,12 @@ Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ Sy
         RESULT = node;
     :};
 
-// ESTADO q0;
 StateDef ::= ESTADO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
         RESULT = new ASTNode("Declarar_Estado: " + t.getLexeme());
     :};
 
-// FONDO AZUL;
 BackgroundDef ::= FONDO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;

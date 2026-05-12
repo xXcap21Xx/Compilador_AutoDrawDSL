@@ -172,17 +172,12 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        
-        // Extraemos los datos necesarios del token
         String lexema = t.getLexeme();
-        int linea = t.getLine();
-        int columna = t.getColumn();
         
-        // Mensaje de error personalizado
-        String mensaje = "Error Sintáctico: Token inesperado '" + lexema + "'";
+        // Mejoramos el mensaje para dar una pista más exacta
+        String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) antes de esto?";
         
-        // Usamos el constructor de 3 parámetros: (linea, columna, mensaje)
-        errors.add(new ErrorLSSL(linea, columna, mensaje));
+        errors.add(new ErrorLSSL(1, descripcion, t));
     }
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
