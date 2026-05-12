@@ -1,4 +1,5 @@
 TIPO AFD;
+FONDO AZUl;
 ALFABETO { 'a', 'b' };
 INICIO q0;
 q0 -> q1 ['a'];
