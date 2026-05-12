@@ -8,6 +8,7 @@ import java_cup.runtime.Symbol;
 
 @SuppressWarnings("fallthrough")
 class Lexer implements java_cup.runtime.Scanner {
+
   /** This character denotes the end of file. */
   public static final int YYEOF = -1;
 
