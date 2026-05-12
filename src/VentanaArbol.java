@@ -24,6 +24,7 @@ public class VentanaArbol extends javax.swing.JFrame {
         Arbol.setText(arbol);
         Arbol.setCaretPosition(0); // Opcional: para que muestre desde arriba
         Arbol.setEditable(false);
+        setDefaultCloseOperation(javax.swing.JFrame.DISPOSE_ON_CLOSE); 
     }
 
     /**
@@ -82,6 +83,7 @@ public class VentanaArbol extends javax.swing.JFrame {
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new VentanaArbol().setVisible(true));
+        System.exit(0);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

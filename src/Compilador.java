@@ -60,10 +60,10 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     private void init() {
-        title = "MathLex";
+        title = "AutoDrawDSL";
         setLocationRelativeTo(null);
         setTitle(title);
-        Directorio = new Directory(this, panel_Codigo, title, ".lex");
+        Directorio = new Directory(this, panel_Codigo, title, ".draw");
         addWindowListener(new WindowAdapter() {// Cuando presiona la "X" de la esquina superior derecha
             @Override
             public void windowClosing(WindowEvent e) {

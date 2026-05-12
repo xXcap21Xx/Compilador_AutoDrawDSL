@@ -6,67 +6,47 @@
 /** CUP generated class containing symbol constants. */
 public class sym {
   /* terminals */
-  public static final int NE = 26;
-  public static final int LT = 22;
-  public static final int ELSE = 28;
-  public static final int SEMICOLON = 20;
-  public static final int SIN = 9;
-  public static final int PLUS = 2;
-  public static final int RBRACE = 17;
-  public static final int LEFT_PAREN = 14;
-  public static final int IDENTIFIER = 13;
-  public static final int SQRT = 8;
-  public static final int ERROR = 7;
-  public static final int IF = 27;
-  public static final int GT = 21;
-  public static final int LBRACE = 16;
-  public static final int LE = 24;
-  public static final int COMMA = 19;
+  public static final int COMILLA_SIMPLE = 16;
+  public static final int AFN = 10;
+  public static final int FLECHA = 11;
+  public static final int AFD = 9;
+  public static final int TIPO = 2;
+  public static final int ALFABETO = 3;
+  public static final int COMA = 18;
   public static final int EOF = 0;
-  public static final int DIV = 5;
-  public static final int PI = 10;
-  public static final int GE = 23;
-  public static final int MINUS = 3;
+  public static final int FONDO = 8;
+  public static final int CORCHETE_IZQ = 12;
+  public static final int EPSILON = 7;
+  public static final int CORCHETE_DER = 13;
+  public static final int FINAL = 5;
   public static final int error = 1;
-  public static final int EQ = 25;
-  public static final int INTEGER_LITERAL = 12;
-  public static final int ASSIGNMENT = 18;
-  public static final int RIGHT_PAREN = 15;
-  public static final int FOR = 29;
-  public static final int FLOAT_LITERAL = 11;
-  public static final int MUL = 4;
-  public static final int POWER = 6;
+  public static final int IDENTIFICADOR = 19;
+  public static final int LLAVE_IZQ = 14;
+  public static final int LLAVE_DER = 15;
+  public static final int ESTADO = 6;
+  public static final int PUNTO_Y_COMA = 17;
+  public static final int INICIO = 4;
   public static final String[] terminalNames = new String[] {
   "EOF",
   "error",
-  "PLUS",
-  "MINUS",
-  "MUL",
-  "DIV",
-  "POWER",
-  "ERROR",
-  "SQRT",
-  "SIN",
-  "PI",
-  "FLOAT_LITERAL",
-  "INTEGER_LITERAL",
-  "IDENTIFIER",
-  "LEFT_PAREN",
-  "RIGHT_PAREN",
-  "LBRACE",
-  "RBRACE",
-  "ASSIGNMENT",
-  "COMMA",
-  "SEMICOLON",
-  "GT",
-  "LT",
-  "GE",
-  "LE",
-  "EQ",
-  "NE",
-  "IF",
-  "ELSE",
-  "FOR"
+  "TIPO",
+  "ALFABETO",
+  "INICIO",
+  "FINAL",
+  "ESTADO",
+  "EPSILON",
+  "FONDO",
+  "AFD",
+  "AFN",
+  "FLECHA",
+  "CORCHETE_IZQ",
+  "CORCHETE_DER",
+  "LLAVE_IZQ",
+  "LLAVE_DER",
+  "COMILLA_SIMPLE",
+  "PUNTO_Y_COMA",
+  "COMA",
+  "IDENTIFICADOR"
   };
 }
 
