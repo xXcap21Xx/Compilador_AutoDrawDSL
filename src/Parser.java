@@ -170,18 +170,28 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public List<ErrorLSSL> errors = new ArrayList<>();
 
+    // 1. Se dispara con cualquier error sintáctico
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        String lexema = t.getLexeme();
-        
-        // Mejoramos el mensaje para dar una pista más exacta
-        String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) antes de esto?";
-        
-        errors.add(new ErrorLSSL(1, descripcion, t));
+        if (t != null) {
+            String lexema = t.getLexeme();
+            String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) antes de esto?";
+            errors.add(new ErrorLSSL(1, descripcion, t));
+        }
     }
 
+    // 2. Se dispara si el "Modo Pánico" falla (ej. no encuentra un ';' para recuperarse)
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
-        // Manejo de errores fatales
+        Token t = (Token) s.value;
+        if (t != null) {
+            String descripcion = "Error Fatal: No se pudo recuperar del error cerca de '" + t.getLexeme() + "'. Revisa la estructura general.";
+            errors.add(new ErrorLSSL(1, descripcion, t));
+        } else {
+            // Error al final del archivo (EOF). 
+            // Creamos un Token artificial (lexema, componenteLexico, linea, columna) para que la librería lo acepte.
+            Token dummyToken = new Token("EOF", "FIN_ARCHIVO", 0, 0);
+            errors.add(new ErrorLSSL(1, "Error Fatal: Fin de archivo inesperado. ¿Falta cerrar llaves o un punto y coma?", dummyToken));
+        }
     }
 
 
@@ -361,7 +371,9 @@ class CUP$Parser$actions {
           case 11: // Statement ::= error PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
-
+		
+        RESULT = new ASTNode("Sentencia_Ignorada_Por_Error");
+    
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Statement",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
