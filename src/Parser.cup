@@ -1,4 +1,4 @@
-/* Parser.cup */
+/* Parser.cup actualizado */
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,12 +10,11 @@ import java_cup.runtime.*;
 /* ====================== Bloque parser code ====================== */
 parser code {:
     public List<ErrorLSSL> errors = new ArrayList<>();
+    public List<SimboloDSL> symbols = new ArrayList<>(); //  LISTA DE SIMBOLOS
     
-    // 🌟 NUEVO: Variables para tener "memoria" del último token leído
     private Token tokenAnterior = null;
     private Token tokenActual = null;
 
-    // 🌟 NUEVO: Interceptamos el escáner para recordar el token anterior
     @Override
     public Symbol scan() throws java.lang.Exception {
         Symbol sym = super.scan();
@@ -26,36 +25,35 @@ parser code {:
         return sym;
     }
 
-    // 1. Se dispara con cualquier error sintáctico
+    // Método para registrar símbolos en la tabla
+    public void addSymbol(String name, String type, Token t) {
+        symbols.add(new SimboloDSL(name, type, t.getLine(), t.getColumn()));
+    }
+
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
         if (t != null) {
             String lexema = t.getLexeme();
             
-            // 🌟 NUEVO: Si tenemos memoria del token anterior, retrocedemos a esa línea exacta
             if (tokenAnterior != null) {
-                String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) justo después de '" + tokenAnterior.getLexeme() + "'?";
-                
-                // Creamos un token "fantasma" que apunta a la línea y columna del token anterior
+                String descripcion = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) justo después de '" + tokenAnterior.getLexeme() + "'?";
                 Token tokenAjustado = new Token(lexema, t.getLexicalComp(), tokenAnterior.getLine(), tokenAnterior.getColumn());
                 errors.add(new ErrorLSSL(1, descripcion, tokenAjustado));
             } else {
-                // Si el error pasa en la primera palabra del archivo
-                String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'";
+                String descripcion = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'";
                 errors.add(new ErrorLSSL(1, descripcion, t));
             }
         }
     }
 
-    // 2. Se dispara si el "Modo Pánico" falla
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
         if (t != null) {
-            String descripcion = "Error Fatal: No se pudo recuperar del error cerca de '" + t.getLexeme() + "'. Revisa la estructura general.";
+            String descripcion = "[SinError 011] Error Fatal: No se pudo recuperar del error cerca de '" + t.getLexeme() + "'. Revisa la estructura general.";
             errors.add(new ErrorLSSL(1, descripcion, t));
         } else {
             Token dummyToken = new Token("EOF", "FIN_ARCHIVO", 0, 0);
-            errors.add(new ErrorLSSL(1, "Error Fatal: Fin de archivo inesperado. ¿Falta cerrar llaves o un punto y coma?", dummyToken));
+            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: Fin de archivo inesperado. ¿Falta cerrar llaves o un punto y coma?", dummyToken));
         }
     }
 :};
@@ -105,22 +103,26 @@ Statement ::=
     | FinalDef:f    {: RESULT = f; :}
     | StateDef:st   {: RESULT = st; :}
     | BackgroundDef:b {: RESULT = b; :}
-    
     | error PUNTO_Y_COMA
     {:
         RESULT = new ASTNode("Sentencia_Ignorada_Por_Error");
     :}
     ;
 
-ConfigType ::= TIPO AFD PUNTO_Y_COMA
-    {: RESULT = new ASTNode("Config: TIPO AFD"); :}
-    | TIPO AFN PUNTO_Y_COMA
-    {: RESULT = new ASTNode("Config: TIPO AFN"); :}
-    /* Sugerencia para TIPO */
+ConfigType ::= TIPO AFD:a PUNTO_Y_COMA
+    {: 
+        parser.addSymbol("AFD", "Tipo de Autómata", (Token)a);
+        RESULT = new ASTNode("Config: TIPO AFD"); 
+    :}
+    | TIPO AFN:a PUNTO_Y_COMA
+    {: 
+        parser.addSymbol("AFN", "Tipo de Autómata", (Token)a);
+        RESULT = new ASTNode("Config: TIPO AFN"); 
+    :}
     | TIPO error PUNTO_Y_COMA
     {: 
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: Después de 'TIPO' solo se admite 'AFD' o 'AFN'. Ejemplo: TIPO AFD;", t));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Sugerencia: Después de 'TIPO' solo se admite 'AFD' o 'AFN'. Ejemplo: TIPO AFD;", t));
         RESULT = new ASTNode("Error_En_Tipo"); 
     :};
 
@@ -130,11 +132,10 @@ AlphabetDef ::= ALFABETO LLAVE_IZQ SymbolList:sl LLAVE_DER PUNTO_Y_COMA
         node.addChild(sl);
         RESULT = node;
     :}
-    /* Sugerencia para ALFABETO */
     | ALFABETO error PUNTO_Y_COMA
     {:
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: El ALFABETO debe ir entre llaves y separado por comas. Ejemplo: ALFABETO { 'a', 'b' };", t));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 013] Sugerencia: El ALFABETO debe ir entre llaves y separado por comas. Ejemplo: ALFABETO { 'a', 'b' };", t));
         RESULT = new ASTNode("Error_En_Alfabeto");
     :};
 
@@ -153,15 +154,20 @@ SymbolList ::=
 
 SymbolVal ::= COMILLA_SIMPLE IDENTIFICADOR:id COMILLA_SIMPLE
     {: 
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Símbolo Alfabeto", t);
         RESULT = new ASTNode("Simbolo: " + t.getLexeme());
     :}
-    | EPSILON
-    {: RESULT = new ASTNode("Simbolo: EPSILON"); :};
+    | EPSILON:e
+    {: 
+        parser.addSymbol("ε", "Símbolo Épsilon", (Token)e);
+        RESULT = new ASTNode("Simbolo: EPSILON"); 
+    :};
 
 StartDef ::= INICIO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Inicial", t);
         RESULT = new ASTNode("Estado_Inicial: " + t.getLexeme());
     :};
 
@@ -175,13 +181,15 @@ FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
 StateList ::= 
     StateList:sl COMA IDENTIFICADOR:id
     {:
-        Token t = (Token) ((Symbol)CUP$Parser$stack.peek()).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Final", t);
         sl.addChild(new ASTNode(t.getLexeme()));
         RESULT = sl;
     :}
     | IDENTIFICADOR:id
     {:
-        Token t = (Token) ((Symbol)CUP$Parser$stack.peek()).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Final", t);
         ASTNode node = new ASTNode("Lista_Estados");
         node.addChild(new ASTNode(t.getLexeme()));
         RESULT = node;
@@ -197,22 +205,23 @@ Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ Sy
         node.addChild(sv);
         RESULT = node;
     :}
-    /* Sugerencia para TRANSICIÓN */
     | IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino error PUNTO_Y_COMA
     {:
         Token tOri = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: Transición mal formada. Asegúrate de usar corchetes para el símbolo. Ejemplo: " + tOri.getLexeme() + " -> destino ['a'];", tOri));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Sugerencia: Transición mal formada. Asegúrate de usar corchetes para el símbolo. Ejemplo: " + tOri.getLexeme() + " -> destino ['a'];", tOri));
         RESULT = new ASTNode("Error_En_Transicion");
     :};
 
 StateDef ::= ESTADO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Declarado", t);
         RESULT = new ASTNode("Declarar_Estado: " + t.getLexeme());
     :};
 
 BackgroundDef ::= FONDO IDENTIFICADOR:id PUNTO_Y_COMA
     {:
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Color Fondo", t);
         RESULT = new ASTNode("Color_Fondo: " + t.getLexeme());
     :};

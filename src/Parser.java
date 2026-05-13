@@ -179,12 +179,11 @@ public class Parser extends java_cup.runtime.lr_parser {
 
 
     public List<ErrorLSSL> errors = new ArrayList<>();
+    public List<SimboloDSL> symbols = new ArrayList<>(); //  LISTA DE SIMBOLOS
     
-    // 🌟 NUEVO: Variables para tener "memoria" del último token leído
     private Token tokenAnterior = null;
     private Token tokenActual = null;
 
-    // 🌟 NUEVO: Interceptamos el escáner para recordar el token anterior
     @Override
     public Symbol scan() throws java.lang.Exception {
         Symbol sym = super.scan();
@@ -195,36 +194,35 @@ public class Parser extends java_cup.runtime.lr_parser {
         return sym;
     }
 
-    // 1. Se dispara con cualquier error sintáctico
+    // Método para registrar símbolos en la tabla
+    public void addSymbol(String name, String type, Token t) {
+        symbols.add(new SimboloDSL(name, type, t.getLine(), t.getColumn()));
+    }
+
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
         if (t != null) {
             String lexema = t.getLexeme();
             
-            // 🌟 NUEVO: Si tenemos memoria del token anterior, retrocedemos a esa línea exacta
             if (tokenAnterior != null) {
-                String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) justo después de '" + tokenAnterior.getLexeme() + "'?";
-                
-                // Creamos un token "fantasma" que apunta a la línea y columna del token anterior
+                String descripcion = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'. ¿Falta un punto y coma (;) justo después de '" + tokenAnterior.getLexeme() + "'?";
                 Token tokenAjustado = new Token(lexema, t.getLexicalComp(), tokenAnterior.getLine(), tokenAnterior.getColumn());
                 errors.add(new ErrorLSSL(1, descripcion, tokenAjustado));
             } else {
-                // Si el error pasa en la primera palabra del archivo
-                String descripcion = "Error Sintáctico: Token inesperado '" + lexema + "'";
+                String descripcion = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'";
                 errors.add(new ErrorLSSL(1, descripcion, t));
             }
         }
     }
 
-    // 2. Se dispara si el "Modo Pánico" falla
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
         if (t != null) {
-            String descripcion = "Error Fatal: No se pudo recuperar del error cerca de '" + t.getLexeme() + "'. Revisa la estructura general.";
+            String descripcion = "[SinError 011] Error Fatal: No se pudo recuperar del error cerca de '" + t.getLexeme() + "'. Revisa la estructura general.";
             errors.add(new ErrorLSSL(1, descripcion, t));
         } else {
             Token dummyToken = new Token("EOF", "FIN_ARCHIVO", 0, 0);
-            errors.add(new ErrorLSSL(1, "Error Fatal: Fin de archivo inesperado. ¿Falta cerrar llaves o un punto y coma?", dummyToken));
+            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: Fin de archivo inesperado. ¿Falta cerrar llaves o un punto y coma?", dummyToken));
         }
     }
 
@@ -416,7 +414,13 @@ class CUP$Parser$actions {
           case 12: // ConfigType ::= TIPO AFD PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
-		 RESULT = new ASTNode("Config: TIPO AFD"); 
+		int aleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
+		Object a = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		 
+        parser.addSymbol("AFD", "Tipo de Autómata", (Token)a);
+        RESULT = new ASTNode("Config: TIPO AFD"); 
+    
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",3, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -425,7 +429,13 @@ class CUP$Parser$actions {
           case 13: // ConfigType ::= TIPO AFN PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
-		 RESULT = new ASTNode("Config: TIPO AFN"); 
+		int aleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
+		int aright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
+		Object a = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		 
+        parser.addSymbol("AFN", "Tipo de Autómata", (Token)a);
+        RESULT = new ASTNode("Config: TIPO AFN"); 
+    
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",3, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -436,7 +446,7 @@ class CUP$Parser$actions {
               ASTNode RESULT =null;
 		 
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: Después de 'TIPO' solo se admite 'AFD' o 'AFN'. Ejemplo: TIPO AFD;", t));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Sugerencia: Después de 'TIPO' solo se admite 'AFD' o 'AFN'. Ejemplo: TIPO AFD;", t));
         RESULT = new ASTNode("Error_En_Tipo"); 
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",3, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -465,7 +475,7 @@ class CUP$Parser$actions {
               ASTNode RESULT =null;
 		
         Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: El ALFABETO debe ir entre llaves y separado por comas. Ejemplo: ALFABETO { 'a', 'b' };", t));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 013] Sugerencia: El ALFABETO debe ir entre llaves y separado por comas. Ejemplo: ALFABETO { 'a', 'b' };", t));
         RESULT = new ASTNode("Error_En_Alfabeto");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AlphabetDef",4, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -514,7 +524,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		 
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Símbolo Alfabeto", t);
         RESULT = new ASTNode("Simbolo: " + t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",12, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -525,7 +536,13 @@ class CUP$Parser$actions {
           case 20: // SymbolVal ::= EPSILON 
             {
               ASTNode RESULT =null;
-		 RESULT = new ASTNode("Simbolo: EPSILON"); 
+		int eleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int eright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		Object e = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		 
+        parser.addSymbol("ε", "Símbolo Épsilon", (Token)e);
+        RESULT = new ASTNode("Simbolo: EPSILON"); 
+    
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",12, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -538,7 +555,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Inicial", t);
         RESULT = new ASTNode("Estado_Inicial: " + t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",6, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -572,7 +590,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
-        Token t = (Token) ((Symbol)CUP$Parser$stack.peek()).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Final", t);
         sl.addChild(new ASTNode(t.getLexeme()));
         RESULT = sl;
     
@@ -588,7 +607,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
-        Token t = (Token) ((Symbol)CUP$Parser$stack.peek()).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Final", t);
         ASTNode node = new ASTNode("Lista_Estados");
         node.addChild(new ASTNode(t.getLexeme()));
         RESULT = node;
@@ -635,7 +655,7 @@ class CUP$Parser$actions {
 		Object destino = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		
         Token tOri = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)).value;
-        parser.errors.add(new ErrorLSSL(1, "💡 Sugerencia: Transición mal formada. Asegúrate de usar corchetes para el símbolo. Ejemplo: " + tOri.getLexeme() + " -> destino ['a'];", tOri));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Sugerencia: Transición mal formada. Asegúrate de usar corchetes para el símbolo. Ejemplo: " + tOri.getLexeme() + " -> destino ['a'];", tOri));
         RESULT = new ASTNode("Error_En_Transicion");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Transition",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -650,7 +670,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Estado Declarado", t);
         RESULT = new ASTNode("Declarar_Estado: " + t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -665,7 +686,8 @@ class CUP$Parser$actions {
 		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
 		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		
-        Token t = (Token) ((Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Color Fondo", t);
         RESULT = new ASTNode("Color_Fondo: " + t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);

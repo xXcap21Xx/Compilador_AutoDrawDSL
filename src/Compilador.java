@@ -48,6 +48,8 @@ public class Compilador extends javax.swing.JFrame {
     private ArrayList<Production> identProd;
     private HashMap<String, String> identificadores;
     private boolean codeHasBeenCompiled = false;
+    private java.util.List<SimboloDSL> listaSimbolos = new java.util.ArrayList<>();
+    private java.util.List<SimboloDSL> listaSimbolosGlobal = new java.util.ArrayList<>();
     private Object compilerTools;
 
     /**
@@ -143,6 +145,93 @@ public class Compilador extends javax.swing.JFrame {
                 // getASTAsString(child, prefix + "    ", sb);
             }
         }
+    }
+
+    private void mostrarVentanaErrores() {
+        if (errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "¡Felicidades! No hay errores en el código.", "Compilación Exitosa", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Crear la ventana (JDialog)
+        javax.swing.JDialog ventanaErrores = new javax.swing.JDialog(this, "Tabla de Errores Detectados", true);
+        ventanaErrores.setSize(850, 400);
+        ventanaErrores.setLocationRelativeTo(this);
+
+        // Columnas simplificadas y seguras
+        String[] columnas = {"Código", "Línea", "Columna", "Descripción Detallada"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        javax.swing.JTable tabla = new javax.swing.JTable(modelo);
+
+        // Llenar la tabla usando expresiones simples en lugar de getters bloqueados
+        for (ErrorLSSL error : errors) {
+            String textoCompleto = error.toString();
+            String codigoStr = "Desconocido";
+
+            // Detectamos el código que inyectamos en los pasos anteriores
+            if (textoCompleto.contains("[LexError 001]")) {
+                codigoStr = "LexError 001";
+            } else if (textoCompleto.contains("[SinError 010]")) {
+                codigoStr = "SinError 010";
+            } else if (textoCompleto.contains("[SinError 011]")) {
+                codigoStr = "SinError 011";
+            } else if (textoCompleto.contains("[SinError 012]")) {
+                codigoStr = "SinError 012";
+            } else if (textoCompleto.contains("[SinError 013]")) {
+                codigoStr = "SinError 013";
+            } else if (textoCompleto.contains("[SinError 014]")) {
+                codigoStr = "SinError 014";
+            }
+
+            // Agregamos la fila
+            Object[] fila = {
+                codigoStr,
+                error.getLine(),
+                error.getColumn(),
+                textoCompleto // Mostramos el mensaje completo para mayor contexto
+            };
+            modelo.addRow(fila);
+        }
+
+        // Ajustes estéticos de la tabla
+        tabla.setRowHeight(30);
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(100); // Código
+        tabla.getColumnModel().getColumn(1).setPreferredWidth(50);  // Línea
+        tabla.getColumnModel().getColumn(2).setPreferredWidth(50);  // Columna
+        tabla.getColumnModel().getColumn(3).setPreferredWidth(550); // Descripción
+
+        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(tabla);
+        ventanaErrores.add(scroll);
+        ventanaErrores.setVisible(true);
+    }
+
+    private void mostrarVentanaSimbolos() {
+        // 1. Verificamos la lista correcta
+        if (listaSimbolosGlobal == null || listaSimbolosGlobal.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "La tabla de símbolos está vacía.\nAsegúrate de compilar código que tenga declaraciones (ej. ESTADO q0; o TIPO AFD;)", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Mensaje de prueba para la consola de NetBeans
+        System.out.println("Abriendo ventana. Total de símbolos a dibujar: " + listaSimbolosGlobal.size());
+
+        javax.swing.JDialog ventana = new javax.swing.JDialog(this, "Tabla de Símbolos", true);
+        ventana.setSize(600, 400);
+        ventana.setLocationRelativeTo(this);
+
+        String[] columnas = {"Nombre / Identificador", "Categoría / Tipo", "Línea", "Columna"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        javax.swing.JTable tabla = new javax.swing.JTable(modelo);
+
+        // Llenar la tabla
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            Object[] fila = {sym.nombre, sym.tipo, sym.linea, sym.columna};
+            modelo.addRow(fila);
+        }
+
+        tabla.setRowHeight(25);
+        ventana.add(new javax.swing.JScrollPane(tabla));
+        ventana.setVisible(true);
     }
 
     private void clearFields() {
@@ -299,6 +388,8 @@ public class Compilador extends javax.swing.JFrame {
         panel_Salida = new javax.swing.JTextPane();
         jScrollPane4 = new javax.swing.JScrollPane();
         tbl_Token = new javax.swing.JTable();
+        btn_Errores = new javax.swing.JButton();
+        btn_Simbolos = new javax.swing.JButton();
 
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
@@ -433,6 +524,22 @@ public class Compilador extends javax.swing.JFrame {
         ));
         jScrollPane4.setViewportView(tbl_Token);
 
+        btn_Errores.setFont(new java.awt.Font("Consolas", 1, 14)); // NOI18N
+        btn_Errores.setText("Tabla de Errores");
+        btn_Errores.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_ErroresActionPerformed(evt);
+            }
+        });
+
+        btn_Simbolos.setFont(new java.awt.Font("Consolas", 1, 14)); // NOI18N
+        btn_Simbolos.setText("Tabla de Simbolos");
+        btn_Simbolos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_SimbolosActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout panel_PrincipalLayout = new javax.swing.GroupLayout(panel_Principal);
         panel_Principal.setLayout(panel_PrincipalLayout);
         panel_PrincipalLayout.setHorizontalGroup(
@@ -446,15 +553,27 @@ public class Compilador extends javax.swing.JFrame {
                         .addGap(147, 147, 147)
                         .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jScrollPane1))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panel_PrincipalLayout.createSequentialGroup()
+                        .addComponent(btn_Errores)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btn_Simbolos))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 458, Short.MAX_VALUE))
                 .addContainerGap())
         );
         panel_PrincipalLayout.setVerticalGroup(
             panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panel_PrincipalLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(panel_PrincipalLayout.createSequentialGroup()
+                        .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 469, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(btn_Errores)
+                            .addComponent(btn_Simbolos))
+                        .addGap(0, 18, Short.MAX_VALUE))
                     .addGroup(panel_PrincipalLayout.createSequentialGroup()
                         .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -462,9 +581,8 @@ public class Compilador extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 245, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 136, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jScrollPane4))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(jScrollPane3)))
+                .addContainerGap())
         );
 
         getContentPane().add(panel_Principal);
@@ -497,11 +615,19 @@ public class Compilador extends javax.swing.JFrame {
     }//GEN-LAST:event_btn_GuardarCActionPerformed
 
     private void btn_CompilarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_CompilarActionPerformed
-        // 1. Limpiamos campos, tablas y consola
+// 1. Limpiamos campos, tablas y consola
         Functions.clearDataInTable(tbl_Token);
         panel_Salida.setText("");
         errors.clear();
         tokens.clear();
+
+        // 🌟 NUEVO: Limpiamos la tabla de símbolos de compilaciones anteriores
+        if (listaSimbolos != null) {
+            listaSimbolos.clear();
+        } else {
+            listaSimbolos = new java.util.ArrayList<>();
+        }
+
         codeHasBeenCompiled = false;
 
         String input = panel_Codigo.getText();
@@ -536,7 +662,7 @@ public class Compilador extends javax.swing.JFrame {
 
                     // Si el token es un error léxico no reconocido (configurado en tu .flex)
                     if (token.getLexicalComp().equals("ERROR_LEXICO")) {
-                        errors.add(new ErrorLSSL(1, "Error Léxico: Carácter no reconocido", token));
+                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter no reconocido", token));
                     }
                 }
             }
@@ -550,14 +676,22 @@ public class Compilador extends javax.swing.JFrame {
             try {
                 parser.parse();
             } catch (Exception ex) {
-                // Cuando CUP encuentra un error sintáctico grave, lanza una Excepción.
-                // La atrapamos aquí para que no detenga el programa y nos permita 
-                // mostrar los errores que sí logró recolectar en parser.errors.
+                // ... ignoramos el error grave aquí para poder leer los errores recuperados
             }
 
-            // Recolectamos los errores sintácticos guardados en el parser
+            // Recolectamos los errores sintácticos
             if (parser.errors != null && !parser.errors.isEmpty()) {
                 errors.addAll(parser.errors);
+            }
+
+            // ========================================================
+            // 🌟 ESTA ES LA PARTE QUE LLENA LA TABLA DE SÍMBOLOS
+            // ========================================================
+            if (parser.symbols != null && !parser.symbols.isEmpty()) {
+                listaSimbolosGlobal.addAll(parser.symbols);
+                System.out.println("Símbolos extraídos del parser: " + parser.symbols.size());
+            } else {
+                System.out.println("El parser no guardó ningún símbolo en esta ejecución.");
             }
 
         } catch (Exception ex) {
@@ -575,23 +709,23 @@ public class Compilador extends javax.swing.JFrame {
             // Si hay errores, los mostramos en rojo con un formato claro
             panel_Salida.setForeground(Color.RED);
             StringBuilder consola = new StringBuilder();
-            
+
             // 🌟 1. Extraemos TODO el texto directamente de tu editor visual
             String codigoCompleto = panel_Codigo.getText();
             // 🌟 2. Lo dividimos en un arreglo (cada elemento es una línea)
             String[] lineasDeCodigo = codigoCompleto.split("\\r?\\n");
-            
+
             consola.append("❌ Se encontraron ").append(errors.size()).append(" error(es):\n\n");
-            
+
             for (ErrorLSSL error : errors) {
                 int numLinea = error.getLine();
                 String fragmentoCodigo = "<Línea vacía o no encontrada>";
-                
+
                 // Extraemos la línea de código exacta (los arreglos empiezan en 0, las líneas en 1)
                 if (numLinea > 0 && numLinea <= lineasDeCodigo.length) {
-                    fragmentoCodigo = lineasDeCodigo[numLinea - 1].trim(); 
+                    fragmentoCodigo = lineasDeCodigo[numLinea - 1].trim();
                 }
-                
+
                 // 🌟 3. Damos un formato estructurado y fácil de leer
                 consola.append("► Error en la Línea ").append(numLinea).append(":\n");
                 consola.append("   Detalle : ").append(error.toString()).append("\n");
@@ -600,7 +734,7 @@ public class Compilador extends javax.swing.JFrame {
             }
             panel_Salida.setText(consola.toString());
         }
-        
+
         codeHasBeenCompiled = true;
     }//GEN-LAST:event_btn_CompilarActionPerformed
 
@@ -614,6 +748,16 @@ public class Compilador extends javax.swing.JFrame {
 
         }
     }//GEN-LAST:event_btn_EjecutarActionPerformed
+
+    private void btn_ErroresActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_ErroresActionPerformed
+        // TODO add your handling code here:
+        mostrarVentanaErrores();
+    }//GEN-LAST:event_btn_ErroresActionPerformed
+
+    private void btn_SimbolosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_SimbolosActionPerformed
+        // TODO add your handling code here:
+        mostrarVentanaSimbolos();
+    }//GEN-LAST:event_btn_SimbolosActionPerformed
 
     private void btn_VerArbolActionPerformed(java.awt.event.ActionEvent evt) {
         try {
@@ -665,9 +809,11 @@ public class Compilador extends javax.swing.JFrame {
     private javax.swing.JButton btn_Abrir;
     private javax.swing.JButton btn_Compilar;
     private javax.swing.JButton btn_Ejecutar;
+    private javax.swing.JButton btn_Errores;
     private javax.swing.JButton btn_Guardar;
     private javax.swing.JButton btn_GuardarC;
     private javax.swing.JButton btn_Nuevo;
+    private javax.swing.JButton btn_Simbolos;
     private javax.swing.JButton btn_VerArbol;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;

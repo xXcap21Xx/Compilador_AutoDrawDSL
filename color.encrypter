@@ -1,5 +1,5 @@
-TIPO AFD
-ALFABETO 'a', 'b' };  // <- Error 1: Faltan las llaves, pero termina en ;
-INICIO q0             // <- Error 2: Falta ;
+TIPO AFD;
+ESTADO q0;
 ESTADO q1;
-FINAL q1;
+INICIO q0;
+ALFABETO { 'a', 'b' };
