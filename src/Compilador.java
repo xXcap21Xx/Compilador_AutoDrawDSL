@@ -382,14 +382,14 @@ public class Compilador extends javax.swing.JFrame {
         btn_Compilar = new javax.swing.JButton();
         btn_Ejecutar = new javax.swing.JButton();
         btn_VerArbol = new javax.swing.JButton();
+        btn_Errores = new javax.swing.JButton();
+        btn_Simbolos = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         panel_Codigo = new javax.swing.JTextPane();
         jScrollPane3 = new javax.swing.JScrollPane();
         panel_Salida = new javax.swing.JTextPane();
         jScrollPane4 = new javax.swing.JScrollPane();
         tbl_Token = new javax.swing.JTable();
-        btn_Errores = new javax.swing.JButton();
-        btn_Simbolos = new javax.swing.JButton();
 
         jTextArea1.setColumns(20);
         jTextArea1.setRows(5);
@@ -481,49 +481,6 @@ public class Compilador extends javax.swing.JFrame {
             }
         });
 
-        javax.swing.GroupLayout panel_botones_exec_compLayout = new javax.swing.GroupLayout(panel_botones_exec_comp);
-        panel_botones_exec_comp.setLayout(panel_botones_exec_compLayout);
-        panel_botones_exec_compLayout.setHorizontalGroup(
-            panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(panel_botones_exec_compLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(btn_VerArbol)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(btn_Compilar)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(btn_Ejecutar)
-                .addGap(0, 9, Short.MAX_VALUE))
-        );
-        panel_botones_exec_compLayout.setVerticalGroup(
-            panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panel_botones_exec_compLayout.createSequentialGroup()
-                .addContainerGap(7, Short.MAX_VALUE)
-                .addGroup(panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btn_Ejecutar)
-                    .addComponent(btn_Compilar)
-                    .addComponent(btn_VerArbol))
-                .addContainerGap())
-        );
-
-        panel_Codigo.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
-        jScrollPane1.setViewportView(panel_Codigo);
-
-        panel_Salida.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
-        jScrollPane3.setViewportView(panel_Salida);
-
-        tbl_Token.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null},
-                {null, null, null},
-                {null, null, null},
-                {null, null, null}
-            },
-            new String [] {
-                "Componente Lexico", "Lexema", "[Línea, Columna]"
-            }
-        ));
-        jScrollPane4.setViewportView(tbl_Token);
-
         btn_Errores.setFont(new java.awt.Font("Consolas", 1, 14)); // NOI18N
         btn_Errores.setText("Tabla de Errores");
         btn_Errores.addActionListener(new java.awt.event.ActionListener() {
@@ -540,48 +497,91 @@ public class Compilador extends javax.swing.JFrame {
             }
         });
 
+        javax.swing.GroupLayout panel_botones_exec_compLayout = new javax.swing.GroupLayout(panel_botones_exec_comp);
+        panel_botones_exec_comp.setLayout(panel_botones_exec_compLayout);
+        panel_botones_exec_compLayout.setHorizontalGroup(
+            panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(panel_botones_exec_compLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(btn_VerArbol)
+                .addGap(18, 18, 18)
+                .addComponent(btn_Compilar)
+                .addGap(18, 18, 18)
+                .addComponent(btn_Ejecutar)
+                .addGap(18, 18, 18)
+                .addComponent(btn_Errores)
+                .addGap(18, 18, 18)
+                .addComponent(btn_Simbolos)
+                .addGap(0, 6, Short.MAX_VALUE))
+        );
+        panel_botones_exec_compLayout.setVerticalGroup(
+            panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panel_botones_exec_compLayout.createSequentialGroup()
+                .addContainerGap(7, Short.MAX_VALUE)
+                .addGroup(panel_botones_exec_compLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btn_Ejecutar)
+                    .addComponent(btn_Compilar)
+                    .addComponent(btn_VerArbol)
+                    .addComponent(btn_Errores)
+                    .addComponent(btn_Simbolos))
+                .addContainerGap())
+        );
+
+        panel_Codigo.setBackground(new java.awt.Color(255, 255, 255));
+        panel_Codigo.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
+        jScrollPane1.setViewportView(panel_Codigo);
+
+        panel_Salida.setBackground(new java.awt.Color(255, 255, 255));
+        panel_Salida.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
+        jScrollPane3.setViewportView(panel_Salida);
+
+        tbl_Token.setBackground(new java.awt.Color(255, 255, 255));
+        tbl_Token.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+                {null, null, null},
+                {null, null, null},
+                {null, null, null},
+                {null, null, null}
+            },
+            new String [] {
+                "Componente Lexico", "Lexema", "[Línea, Columna]"
+            }
+        ));
+        jScrollPane4.setViewportView(tbl_Token);
+
         javax.swing.GroupLayout panel_PrincipalLayout = new javax.swing.GroupLayout(panel_Principal);
         panel_Principal.setLayout(panel_PrincipalLayout);
         panel_PrincipalLayout.setHorizontalGroup(
             panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panel_PrincipalLayout.createSequentialGroup()
                 .addGap(12, 12, 12)
-                .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jScrollPane3)
-                    .addGroup(panel_PrincipalLayout.createSequentialGroup()
-                        .addComponent(panel_botones, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGap(147, 147, 147)
-                        .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jScrollPane1))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panel_PrincipalLayout.createSequentialGroup()
-                        .addComponent(btn_Errores)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(btn_Simbolos))
-                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 458, Short.MAX_VALUE))
-                .addContainerGap())
+                        .addComponent(panel_botones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(147, 147, 147)
+                        .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(panel_PrincipalLayout.createSequentialGroup()
+                        .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(jScrollPane3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 905, Short.MAX_VALUE)
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING))
+                        .addGap(18, 18, 18)
+                        .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
         panel_PrincipalLayout.setVerticalGroup(
             panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panel_PrincipalLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(panel_botones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panel_PrincipalLayout.createSequentialGroup()
-                        .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 469, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(btn_Errores)
-                            .addComponent(btn_Simbolos))
-                        .addGap(0, 18, Short.MAX_VALUE))
-                    .addGroup(panel_PrincipalLayout.createSequentialGroup()
-                        .addGroup(panel_PrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(panel_botones_exec_comp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(panel_botones, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(jScrollPane1)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 245, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jScrollPane3)))
+                        .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 210, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 535, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
