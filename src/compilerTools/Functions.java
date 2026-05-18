@@ -1,6 +1,7 @@
 package compilerTools;
 
 import javax.swing.*;
+import javax.swing.text.Element;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -8,6 +9,7 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import java.awt.*;
+import java.awt.font.FontRenderContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -26,6 +28,68 @@ public class Functions {
     public static void setLineNumberOnJTextComponent(JTextPane textPane) {
         // Implementación simple - simplemente habilita el número de línea
         textPane.putClientProperty("lineNumbers", true);
+    }
+
+    /**
+     * Agrega números de línea a un JTextPane y lo asocia a un JScrollPane (gutter)
+     * @param textPane Componente de texto
+     * @param scrollPane JScrollPane que contiene al textPane
+     */
+    public static void setLineNumberOnJTextComponent(JTextPane textPane, JScrollPane scrollPane) {
+        if (textPane == null || scrollPane == null) {
+            return;
+        }
+
+        JTextArea lineArea = new JTextArea("1");
+        lineArea.setEditable(false);
+        lineArea.setBackground(Color.WHITE);
+        lineArea.setForeground(Color.GRAY);
+        lineArea.setFont(textPane.getFont());
+        lineArea.setBorder(null);
+        lineArea.setOpaque(true);
+        lineArea.setFocusable(false);
+
+        // Ajustar ancho basado en número de líneas
+        Runnable updateLines = () -> {
+            try {
+                Element root = textPane.getDocument().getDefaultRootElement();
+                int lineCount = root.getElementCount();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 1; i <= lineCount; i++) {
+                    sb.append(i).append('\n');
+                }
+                lineArea.setText(sb.toString());
+
+                FontMetrics fm = textPane.getFontMetrics(textPane.getFont());
+                int digits = Math.max(3, String.valueOf(lineCount).length());
+                int width = fm.charWidth('0') * (digits + 1) + 8;
+                lineArea.setPreferredSize(new Dimension(width, Integer.MAX_VALUE));
+                scrollPane.setRowHeaderView(lineArea);
+            } catch (Exception ex) {
+                // ignorar
+            }
+        };
+
+        // Inicializar
+        SwingUtilities.invokeLater(updateLines);
+
+        // Escuchar cambios en el documento para actualizar numeración
+        textPane.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(updateLines);
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(updateLines);
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                SwingUtilities.invokeLater(updateLines);
+            }
+        });
     }
 
     /**

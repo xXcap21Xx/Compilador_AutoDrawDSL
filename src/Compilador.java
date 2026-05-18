@@ -73,7 +73,7 @@ public class Compilador extends javax.swing.JFrame {
                 System.exit(0);
             }
         });
-        Functions.setLineNumberOnJTextComponent(panel_Codigo);
+        Functions.setLineNumberOnJTextComponent(panel_Codigo, jScrollPane1);
         timerKeyReleased = new Timer((int) (1000 * 0.3), (ActionEvent e) -> {
             timerKeyReleased.stop();
             colorAnalysis();
@@ -89,6 +89,7 @@ public class Compilador extends javax.swing.JFrame {
         Functions.setAutocompleterJTextComponent(new String[]{"color", "numero", "este", "oeste", "sur", "norte", "pintar"}, panel_Codigo, () -> { //Corregir para proyecto
             timerKeyReleased.restart();
         });
+        panel_Codigo.setBackground(Color.WHITE);
     }
 
     private void colorAnalysis() {
@@ -115,7 +116,7 @@ public class Compilador extends javax.swing.JFrame {
         } catch (IOException ex) {
             System.out.println("Error al escribir en el archivo... " + ex.getMessage());
         }
-        Functions.colorTextPane(textsColor, panel_Codigo, new Color(40, 40, 40));
+        Functions.colorTextPane(textsColor, panel_Codigo, Color.WHITE);
     }
 
     private void getASTAsString(ASTNode node, String prefix, StringBuilder sb) {
