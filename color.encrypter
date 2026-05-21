@@ -1,5 +1,12 @@
-TIPO AFD
-ALFABETO 'a', 'b' };  // <- Error 1: Faltan las llaves, pero termina en ;
-INICIO q0             // <- Error 2: Falta ;
-ESTADO q1;
-FINAL q1;
+AUTOMATA MiPrimerAFD TIPO AFD {
+    ALFABETO: a, b;
+    ESTADOS: q0, q1, q2;
+    INICIO: q0;
+    ACEPTACION: q2;
+    
+    TRANSICIONES {
+        q0(a) -> q1;
+        q1(b) -> q2;
+        q2(a) -> q0;
+    }
+}
