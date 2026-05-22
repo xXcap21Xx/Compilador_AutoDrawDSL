@@ -1,12 +1,8 @@
-AUTOMATA MiPrimerAFD TIPO AFD {
-    ALFABETO: a, b;
-    ESTADOS: q0, q1, q2;
-    INICIO: q0;
-    ACEPTACION: q2;
-    
-    TRANSICIONES {
-        q0(a) -> q1;
-        q1(b) -> q2;
-        q2(a) -> q0;
-    }
-}
+TIPO AFD;
+ALFABETO { 'a', 'b' };
+INICIO q0;
+ESTADO q1;
+ESTADO q2;
+q0 -> q1 ['a'];
+q1 -> q2 ['b'];
+FINAL q2;

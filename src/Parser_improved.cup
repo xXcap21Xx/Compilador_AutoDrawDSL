@@ -1,0 +1,348 @@
+/* Parser.cup - Versión Mejorada */
+
+import java.util.ArrayList;
+import java.util.List;
+import compilerTools.ErrorLSSL;
+import compilerTools.Token;
+import compilerTools.ASTNode;
+import java_cup.runtime.*;
+
+/* ====================== Bloque parser code ====================== */
+parser code {:
+    public List<ErrorLSSL> errors = new ArrayList<>();
+    public List<SimboloDSL> symbols = new ArrayList<>();
+    
+    private Token tokenAnterior = null;
+    private Token tokenActual = null;
+    private String automatonType = null;
+    private String initialState = null;
+
+    @Override
+    public Symbol scan() throws java.lang.Exception {
+        Symbol sym = super.scan();
+        if (sym != null && sym.value instanceof Token) {
+            tokenAnterior = tokenActual;
+            tokenActual = (Token) sym.value;
+        }
+        return sym;
+    }
+
+    public void addSymbol(String name, String type, Token t) {
+        symbols.add(new SimboloDSL(name, type, t == null ? 0 : t.getLine(), t == null ? 0 : t.getColumn()));
+    }
+
+    public void syntax_error(Symbol s) {
+        Token t = (Token) s.value;
+        if (t != null) {
+            String lexema = t.getLexeme();
+            if (tokenAnterior != null) {
+                String desc = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + 
+                              "'. ¿Falta un punto y coma (;) después de '" + tokenAnterior.getLexeme() + "'?";
+                errors.add(new ErrorLSSL(1, desc, tokenAnterior));
+            } else {
+                errors.add(new ErrorLSSL(1, "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'", t));
+            }
+        }
+    }
+
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        Token t = (Token) s.value;
+        if (t != null) {
+            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: No se pudo recuperar cerca de '" + t.getLexeme() + "'", t));
+        } else {
+            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: Fin de archivo inesperado", null));
+        }
+    }
+:};
+
+/* ====================== TERMINALES ====================== */
+terminal TIPO, ALFABETO, INICIO, FINAL, ESTADO;
+terminal EPSILON, FONDO, AFD, AFN;
+terminal FLECHA, CORCHETE_IZQ, CORCHETE_DER, LLAVE_IZQ, LLAVE_DER;
+terminal COMILLA_SIMPLE, PUNTO_Y_COMA, COMA;
+terminal IDENTIFICADOR;
+
+/* ====================== NO TERMINALES ====================== */
+non terminal ASTNode Program;
+non terminal ASTNode ConfigSection, StateDeclarationSection, TransitionSection, AcceptanceSection;
+non terminal ASTNode ConfigType, AlphabetDef, Transition, StartDef, FinalDef, StateDef, BackgroundDef;
+non terminal ASTNode SymbolList, StateList, SymbolVal, TransitionSymbolList;
+non terminal ASTNode StateDeclarationList, TransitionList;
+
+/* ====================== SÍMBOLO INICIAL ====================== */
+start with Program;
+
+/* ====================== PRODUCCIONES PRINCIPALES ====================== */
+
+Program ::= ConfigSection:cfg StateDeclarationSection:sts TransitionSection:trs AcceptanceSection:acc
+    {: 
+        ASTNode root = new ASTNode("AutomataDSL_Program");
+        root.addChild(cfg);
+        root.addChild(sts);
+        root.addChild(trs);
+        root.addChild(acc);
+        RESULT = root;
+    :}
+    | error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SemError 100] Estructura de programa mal formada", null));
+        RESULT = new ASTNode("Error_Program");
+    :}
+    ;
+
+/* ====================== SECCIÓN 1: CONFIGURACIÓN (TIPO, ALFABETO) ====================== */
+ConfigSection ::= ConfigType:ct AlphabetDef:ab
+    {:
+        ASTNode node = new ASTNode("Config_Section");
+        node.addChild(ct);
+        node.addChild(ab);
+        RESULT = node;
+    :}
+    | ConfigType:ct AlphabetDef:ab BackgroundDef:bg
+    {:
+        ASTNode node = new ASTNode("Config_Section");
+        node.addChild(ct);
+        node.addChild(ab);
+        node.addChild(bg);
+        RESULT = node;
+    :}
+    | error
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SemError 101] Falta TIPO y ALFABETO al inicio del programa", null));
+        RESULT = new ASTNode("Error_Config");
+    :}
+    ;
+
+ConfigType ::= TIPO AFD:a PUNTO_Y_COMA
+    {: 
+        parser.addSymbol("AFD", "Tipo_Automata_AFD", (Token)a);
+        parser.automatonType = "AFD";
+        RESULT = new ASTNode("ConfigType", "AFD");
+    :}
+    | TIPO AFN:a PUNTO_Y_COMA
+    {: 
+        parser.addSymbol("AFN", "Tipo_Automata_AFN", (Token)a);
+        parser.automatonType = "AFN";
+        RESULT = new ASTNode("ConfigType", "AFN");
+    :}
+    | TIPO error PUNTO_Y_COMA
+    {: 
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
+        RESULT = new ASTNode("ConfigType", "ERROR");
+    :}
+    ;
+
+AlphabetDef ::= ALFABETO LLAVE_IZQ SymbolList:sl LLAVE_DER PUNTO_Y_COMA
+    {: 
+        ASTNode node = new ASTNode("AlphabetDefinition");
+        node.addChild(sl);
+        RESULT = node;
+    :}
+    | ALFABETO error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 013] ALFABETO debe ir: ALFABETO { 'a', 'b', ... };", tokenAnterior));
+        RESULT = new ASTNode("AlphabetDefinition", "ERROR");
+    :}
+    ;
+
+SymbolList ::= SymbolList:sl COMA SymbolVal:s
+    {:
+        sl.addChild(s);
+        RESULT = sl;
+    :}
+    | SymbolVal:s
+    {:
+        ASTNode node = new ASTNode("SymbolList");
+        node.addChild(s);
+        RESULT = node;
+    :}
+    ;
+
+SymbolVal ::= COMILLA_SIMPLE IDENTIFICADOR:id COMILLA_SIMPLE
+    {: 
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+        RESULT = new ASTNode("Symbol", t.getLexeme());
+    :}
+    | EPSILON:e
+    {: 
+        parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
+        RESULT = new ASTNode("Symbol", "EPSILON");
+    :}
+    ;
+
+/* ====================== SECCIÓN 2: DECLARACIÓN DE ESTADOS ====================== */
+StateDeclarationSection ::= StartDef:s StateDeclarationList:sdl
+    {:
+        ASTNode node = new ASTNode("State_Declaration_Section");
+        node.addChild(s);
+        node.addChild(sdl);
+        RESULT = node;
+    :}
+    | StartDef:s
+    {:
+        ASTNode node = new ASTNode("State_Declaration_Section");
+        node.addChild(s);
+        RESULT = node;
+    :}
+    | error
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SemError 102] Falta INICIO <estado>;", null));
+        RESULT = new ASTNode("State_Declaration_Section", "ERROR");
+    :}
+    ;
+
+StateDeclarationList ::= StateDeclarationList:sdl StateDef:st
+    {:
+        sdl.addChild(st);
+        RESULT = sdl;
+    :}
+    | StateDef:st
+    {:
+        ASTNode node = new ASTNode("StateList");
+        node.addChild(st);
+        RESULT = node;
+    :}
+    ;
+
+StartDef ::= INICIO IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Initial_State", t);
+        parser.initialState = t.getLexeme();
+        RESULT = new ASTNode("StartState", t.getLexeme());
+    :}
+    | INICIO error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
+        RESULT = new ASTNode("StartState", "ERROR");
+    :}
+    ;
+
+StateDef ::= ESTADO IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "State_Declared", t);
+        RESULT = new ASTNode("StateDecl", t.getLexeme());
+    :}
+    | ESTADO error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato: ESTADO <nombre>;", tokenAnterior));
+        RESULT = new ASTNode("StateDecl", "ERROR");
+    :}
+    ;
+
+/* ====================== SECCIÓN 3: TRANSICIONES ====================== */
+TransitionSection ::= TransitionList:tl
+    {:
+        ASTNode node = new ASTNode("Transition_Section");
+        node.addChild(tl);
+        RESULT = node;
+    :}
+    | 
+    {:
+        RESULT = new ASTNode("Transition_Section");
+    :}
+    ;
+
+TransitionList ::= TransitionList:tl Transition:t
+    {:
+        tl.addChild(t);
+        RESULT = tl;
+    :}
+    | Transition:t
+    {:
+        ASTNode node = new ASTNode("TransitionList");
+        node.addChild(t);
+        RESULT = node;
+    :}
+    ;
+
+Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ TransitionSymbolList:tsl CORCHETE_DER PUNTO_Y_COMA
+    {:
+        Token tOri = (Token)origen;
+        Token tDes = (Token)destino;
+        ASTNode node = new ASTNode("Transition");
+        node.addChild(new ASTNode("From", tOri.getLexeme()));
+        node.addChild(new ASTNode("To", tDes.getLexeme()));
+        node.addChild(tsl);
+        parser.addSymbol(tOri.getLexeme() + "->" + tDes.getLexeme(), "Transition_Used", tOri);
+        RESULT = node;
+    :}
+    | IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino error PUNTO_Y_COMA
+    {:
+        Token tOri = (Token)origen;
+        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        RESULT = new ASTNode("Transition", "ERROR");
+    :}
+    ;
+
+TransitionSymbolList ::= TransitionSymbolList:tsl COMA SymbolVal:s
+    {:
+        tsl.addChild(s);
+        RESULT = tsl;
+    :}
+    | SymbolVal:s
+    {:
+        ASTNode node = new ASTNode("TransitionSymbols");
+        node.addChild(s);
+        RESULT = node;
+    :}
+    ;
+
+/* ====================== SECCIÓN 4: ESTADOS DE ACEPTACIÓN ====================== */
+AcceptanceSection ::= FinalDef:f
+    {:
+        ASTNode node = new ASTNode("Acceptance_Section");
+        node.addChild(f);
+        RESULT = node;
+    :}
+    | error
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SemError 103] Falta FINAL <estado> [, <estado>, ...];", null));
+        RESULT = new ASTNode("Acceptance_Section", "ERROR");
+    :}
+    ;
+
+FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
+    {:
+        ASTNode node = new ASTNode("FinalStates");
+        node.addChild(sl);
+        RESULT = node;
+    :}
+    | FINAL error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
+        RESULT = new ASTNode("FinalStates", "ERROR");
+    :}
+    ;
+
+StateList ::= StateList:sl COMA IDENTIFICADOR:id
+    {:
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Final_State", t);
+        sl.addChild(new ASTNode("FinalState", t.getLexeme()));
+        RESULT = sl;
+    :}
+    | IDENTIFICADOR:id
+    {:
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Final_State", t);
+        ASTNode node = new ASTNode("StateList");
+        node.addChild(new ASTNode("FinalState", t.getLexeme()));
+        RESULT = node;
+    :}
+    ;
+
+BackgroundDef ::= FONDO IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "Background_Color", t);
+        RESULT = new ASTNode("BackgroundColor", t.getLexeme());
+    :}
+    | FONDO error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 018] Formato: FONDO <color>;", tokenAnterior));
+        RESULT = new ASTNode("BackgroundColor", "ERROR");
+    :}
+    ;

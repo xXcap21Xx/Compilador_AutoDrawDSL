@@ -24,6 +24,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
 import java.util.Collections;
@@ -334,7 +338,97 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     private void semanticAnalysis() {
+        semanticAnalysis(panel_Codigo.getText());
+    }
 
+    private void semanticAnalysis(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return;
+        }
+
+        Set<String> alphabetSymbols = new HashSet<>();
+        Set<String> declaredStates = new HashSet<>();
+        Set<String> finalStates = new HashSet<>();
+        Set<String> initialStates = new HashSet<>();
+        boolean hasAutomatonType = false;
+        boolean hasEpsilon = false;
+
+        for (SimboloDSL symbol : listaSimbolosGlobal) {
+            if (symbol.tipo == null) {
+                continue;
+            }
+            switch (symbol.tipo) {
+                case "Símbolo Alfabeto":
+                    alphabetSymbols.add(symbol.nombre.replace("'", ""));
+                    break;
+                case "Símbolo Épsilon":
+                    hasEpsilon = true;
+                    alphabetSymbols.add("EPSILON");
+                    break;
+                case "Estado Declarado":
+                case "Estado Final":
+                case "Estado Inicial":
+                    declaredStates.add(symbol.nombre);
+                    break;
+            }
+            if (symbol.tipo.equals("Tipo de Autómata")) {
+                hasAutomatonType = true;
+            }
+            if (symbol.tipo.equals("Estado Final")) {
+                finalStates.add(symbol.nombre);
+            }
+            if (symbol.tipo.equals("Estado Inicial")) {
+                initialStates.add(symbol.nombre);
+            }
+        }
+
+        if (!hasAutomatonType) {
+            errors.add(new ErrorLSSL(1, "[SemError 001] Falta la declaración del tipo de autómata: TIPO AFD; o TIPO AFN;", null));
+        }
+        if (initialStates.isEmpty()) {
+            errors.add(new ErrorLSSL(1, "[SemError 002] Falta declarar el estado inicial con INICIO <estado>;", null));
+        }
+        if (finalStates.isEmpty()) {
+            errors.add(new ErrorLSSL(1, "[SemError 003] Falta declarar al menos un estado final con FINAL <estado>;", null));
+        }
+        if (alphabetSymbols.isEmpty()) {
+            errors.add(new ErrorLSSL(1, "[SemError 004] Falta declarar el alfabeto con ALFABETO { 'a', 'b' };", null));
+        }
+
+        Pattern transitionPattern = Pattern.compile("([A-Za-z0-9_]+)\\s*->\\s*([A-Za-z0-9_]+)\\s*\\[\\s*([^\\]]+)\\s*\\]\\s*;");
+        Matcher matcher = transitionPattern.matcher(input);
+        int transitionCount = 0;
+
+        while (matcher.find()) {
+            transitionCount++;
+            String origin = matcher.group(1);
+            String destination = matcher.group(2);
+            String symbolText = matcher.group(3).trim();
+
+            if (!declaredStates.contains(origin)) {
+                errors.add(new ErrorLSSL(1, "[SemError 005] Origen de transición no declarado: " + origin, null));
+            }
+            if (!declaredStates.contains(destination)) {
+                errors.add(new ErrorLSSL(1, "[SemError 006] Destino de transición no declarado: " + destination, null));
+            }
+
+            String[] parts = symbolText.split(",");
+            for (String part : parts) {
+                String tokenValue = part.trim();
+                if (tokenValue.startsWith("'") && tokenValue.endsWith("'")) {
+                    tokenValue = tokenValue.substring(1, tokenValue.length() - 1);
+                }
+                if (tokenValue.equals("EPSILON") && !hasEpsilon) {
+                    errors.add(new ErrorLSSL(1, "[SemError 007] Se usa EPSILON en una transición, pero no se declaró en el alfabeto.", null));
+                } else if (!tokenValue.equals("EPSILON") && !alphabetSymbols.contains(tokenValue)) {
+                    errors.add(new ErrorLSSL(1, "[SemError 008] Símbolo de transición no pertenece al alfabeto: " + tokenValue, null));
+                }
+            }
+        }
+
+        if (transitionCount == 0) {
+            errors.add(new ErrorLSSL(1, "[SemError 009] No se encontró ninguna transición válida. Un autómata debe contener al menos una transición.", null));
+        }
     }
 
     private void printAST(ASTNode node, String indent) {
@@ -693,6 +787,13 @@ public class Compilador extends javax.swing.JFrame {
                 System.out.println("Símbolos extraídos del parser: " + parser.symbols.size());
             } else {
                 System.out.println("El parser no guardó ningún símbolo en esta ejecución.");
+            }
+
+            // ========================================================
+            // 🌟 VALIDACIÓN SEMÁNTICA BÁSICA
+            // ========================================================
+            if (parser.errors == null || parser.errors.isEmpty()) {
+                semanticAnalysis(input);
             }
 
         } catch (Exception ex) {
