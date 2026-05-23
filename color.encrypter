@@ -1,5 +1,5 @@
-TIPO AFD;
-ALFABETO { 'a', 'b' };
-INICIO q0;
-q0 -> q1 ['a', EPSILON];
+TIPO AFD
+ALFABETO 'a', 'b' };  // <- Error 1: Faltan las llaves, pero termina en ;
+INICIO q0             // <- Error 2: Falta ;
+ESTADO q1;
 FINAL q1;

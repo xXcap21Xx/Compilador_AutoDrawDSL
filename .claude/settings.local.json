@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(Copy-Item *)",
-      "PowerShell(Copy-Item *)"
+      "PowerShell(Copy-Item *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Mejora el manejo de errores: mensajes contextuales y sugerencias de corrección *)",
+      "Bash(java -jar jflex-full-1.9.1.jar --outdir src src/Lexer.flex)",
+      "Bash(java -jar java-cup-11b.jar -parser Parser -symbols sym src/Parser.cup)",
+      "Bash(copy /Y Parser.java src\\\\Parser.java)",
+      "Bash(copy /Y sym.java src\\\\sym.java)",
+      "Bash(del Parser.java sym.java)",
+      "Bash(java -jar jflex-full-1.9.1.jar --outdir src src/LexerColor.flex)",
+      "Bash(git commit -m 'Agrega token COLOR al lexer para validar colores de FONDO *)"
     ]
   }
 }
