@@ -131,6 +131,9 @@ public class Compilador extends javax.swing.JFrame {
         // Agregar el nodo actual al StringBuilder
         sb.append(prefix);
         sb.append(node.label != null ? node.label : "Node");
+        if (node.value != null && !node.value.isEmpty()) {
+            sb.append(": ").append(node.value);
+        }
         sb.append("\n");
 
         // Recorrer hijos
@@ -186,6 +189,22 @@ public class Compilador extends javax.swing.JFrame {
                 codigoStr = "SinError 013";
             } else if (textoCompleto.contains("[SinError 014]")) {
                 codigoStr = "SinError 014";
+            } else if (textoCompleto.contains("[SinError 015]")) {
+                codigoStr = "SinError 015";
+            } else if (textoCompleto.contains("[SinError 016]")) {
+                codigoStr = "SinError 016";
+            } else if (textoCompleto.contains("[SinError 017]")) {
+                codigoStr = "SinError 017";
+            } else if (textoCompleto.contains("[SinError 018]")) {
+                codigoStr = "SinError 018";
+            } else if (textoCompleto.contains("[SemError 100]")) {
+                codigoStr = "SemError 100";
+            } else if (textoCompleto.contains("[SemError 101]")) {
+                codigoStr = "SemError 101";
+            } else if (textoCompleto.contains("[SemError 102]")) {
+                codigoStr = "SemError 102";
+            } else if (textoCompleto.contains("[SemError 103]")) {
+                codigoStr = "SemError 103";
             }
 
             // Agregamos la fila
@@ -358,26 +377,26 @@ public class Compilador extends javax.swing.JFrame {
                 continue;
             }
             switch (symbol.tipo) {
-                case "Símbolo Alfabeto":
+                case "Alphabet_Symbol":
                     alphabetSymbols.add(symbol.nombre.replace("'", ""));
                     break;
-                case "Símbolo Épsilon":
+                case "Epsilon_Symbol":
                     hasEpsilon = true;
                     alphabetSymbols.add("EPSILON");
                     break;
-                case "Estado Declarado":
-                case "Estado Final":
-                case "Estado Inicial":
+                case "State_Declared":
+                case "Final_State":
+                case "Initial_State":
                     declaredStates.add(symbol.nombre);
                     break;
             }
-            if (symbol.tipo.equals("Tipo de Autómata")) {
+            if (symbol.tipo.equals("Tipo_Automata_AFD") || symbol.tipo.equals("Tipo_Automata_AFN")) {
                 hasAutomatonType = true;
             }
-            if (symbol.tipo.equals("Estado Final")) {
+            if (symbol.tipo.equals("Final_State")) {
                 finalStates.add(symbol.nombre);
             }
-            if (symbol.tipo.equals("Estado Inicial")) {
+            if (symbol.tipo.equals("Initial_State")) {
                 initialStates.add(symbol.nombre);
             }
         }
@@ -435,7 +454,8 @@ public class Compilador extends javax.swing.JFrame {
         if (node == null) {
             return;
         }
-        System.out.println(indent + node.label);
+        String display = node.label + (node.value != null && !node.value.isEmpty() ? ": " + node.value : "");
+        System.out.println(indent + display);
         for (ASTNode child : node.children) {
             printAST(child, indent + "  ");
         }
@@ -716,11 +736,16 @@ public class Compilador extends javax.swing.JFrame {
         errors.clear();
         tokens.clear();
 
-        // 🌟 NUEVO: Limpiamos la tabla de símbolos de compilaciones anteriores
+        // Limpiamos la tabla de símbolos de compilaciones anteriores
         if (listaSimbolos != null) {
             listaSimbolos.clear();
         } else {
             listaSimbolos = new java.util.ArrayList<>();
+        }
+        if (listaSimbolosGlobal != null) {
+            listaSimbolosGlobal.clear();
+        } else {
+            listaSimbolosGlobal = new java.util.ArrayList<>();
         }
 
         codeHasBeenCompiled = false;

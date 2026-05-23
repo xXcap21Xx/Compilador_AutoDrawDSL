@@ -417,3 +417,7 @@ La gramática **v2.0** es un salto significativo en calidad:
 ✅ **Mantenibilidad:** Sin trucos de stack, código limpio  
 
 **Estado del compilador:** 80% → **85%** (mejoras estructurales completadas)
+
+
+
+Mejorar manejo de errores (Que sea mas orientado, mejor instruccion)
