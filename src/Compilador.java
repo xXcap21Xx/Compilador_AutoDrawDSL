@@ -161,71 +161,97 @@ public class Compilador extends javax.swing.JFrame {
             return;
         }
 
-        // Crear la ventana (JDialog)
         javax.swing.JDialog ventanaErrores = new javax.swing.JDialog(this, "Tabla de Errores Detectados", true);
-        ventanaErrores.setSize(850, 400);
+        ventanaErrores.setSize(1050, 420);
         ventanaErrores.setLocationRelativeTo(this);
 
-        // Columnas simplificadas y seguras
-        String[] columnas = {"Código", "Línea", "Columna", "Descripción Detallada"};
-        DefaultTableModel modelo = new DefaultTableModel(columnas, 0);
+        String[] columnas = {"Código", "Tipo", "Línea", "Col.", "Descripción", "Sugerencia de Corrección"};
+        DefaultTableModel modelo = new DefaultTableModel(columnas, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
         javax.swing.JTable tabla = new javax.swing.JTable(modelo);
 
-        // Llenar la tabla usando expresiones simples en lugar de getters bloqueados
+        // Regex para extraer el código entre corchetes: [LexError 001], [SinError 010], [SemError 001], etc.
+        Pattern codigoPattern = Pattern.compile("\\[((?:LexError|SinError|SemError)\\s+\\d+)\\]");
+
         for (ErrorLSSL error : errors) {
-            String textoCompleto = error.toString();
-            String codigoStr = "Desconocido";
+            String desc = error.getDescription();
 
-            // Detectamos el código que inyectamos en los pasos anteriores
-            if (textoCompleto.contains("[LexError 001]")) {
-                codigoStr = "LexError 001";
-            } else if (textoCompleto.contains("[SinError 010]")) {
-                codigoStr = "SinError 010";
-            } else if (textoCompleto.contains("[SinError 011]")) {
-                codigoStr = "SinError 011";
-            } else if (textoCompleto.contains("[SinError 012]")) {
-                codigoStr = "SinError 012";
-            } else if (textoCompleto.contains("[SinError 013]")) {
-                codigoStr = "SinError 013";
-            } else if (textoCompleto.contains("[SinError 014]")) {
-                codigoStr = "SinError 014";
-            } else if (textoCompleto.contains("[SinError 015]")) {
-                codigoStr = "SinError 015";
-            } else if (textoCompleto.contains("[SinError 016]")) {
-                codigoStr = "SinError 016";
-            } else if (textoCompleto.contains("[SinError 017]")) {
-                codigoStr = "SinError 017";
-            } else if (textoCompleto.contains("[SinError 018]")) {
-                codigoStr = "SinError 018";
-            } else if (textoCompleto.contains("[SemError 100]")) {
-                codigoStr = "SemError 100";
-            } else if (textoCompleto.contains("[SemError 101]")) {
-                codigoStr = "SemError 101";
-            } else if (textoCompleto.contains("[SemError 102]")) {
-                codigoStr = "SemError 102";
-            } else if (textoCompleto.contains("[SemError 103]")) {
-                codigoStr = "SemError 103";
+            // Extraer código con regex
+            Matcher mCode = codigoPattern.matcher(desc);
+            String codigoStr = mCode.find() ? mCode.group(1) : "Desconocido";
+
+            // Determinar categoría
+            String tipo = codigoStr.startsWith("LexError") ? "Léxico"
+                        : codigoStr.startsWith("SinError") ? "Sintáctico"
+                        : codigoStr.startsWith("SemError") ? "Semántico"
+                        : "General";
+
+            // Separar descripción de sugerencia por el delimitador " | ✏ "
+            String descripcion = desc;
+            String sugerencia  = "";
+            int sep = desc.indexOf(" | ✏ ");
+            if (sep >= 0) {
+                descripcion = desc.substring(0, sep);
+                sugerencia  = desc.substring(sep + 5); // salta " | ✏ "
             }
+            // Quitar el código del inicio de la descripción (ya está en la columna Código)
+            descripcion = descripcion.replaceFirst("\\[(?:LexError|SinError|SemError)\\s+\\d+\\]\\s*", "").trim();
 
-            // Agregamos la fila
             Object[] fila = {
                 codigoStr,
-                error.getLine(),
-                error.getColumn(),
-                textoCompleto // Mostramos el mensaje completo para mayor contexto
+                tipo,
+                error.getLine()   > 0 ? error.getLine()   : "-",
+                error.getColumn() > 0 ? error.getColumn() : "-",
+                descripcion,
+                sugerencia
             };
             modelo.addRow(fila);
         }
 
-        // Ajustes estéticos de la tabla
-        tabla.setRowHeight(30);
-        tabla.getColumnModel().getColumn(0).setPreferredWidth(100); // Código
-        tabla.getColumnModel().getColumn(1).setPreferredWidth(50);  // Línea
-        tabla.getColumnModel().getColumn(2).setPreferredWidth(50);  // Columna
-        tabla.getColumnModel().getColumn(3).setPreferredWidth(550); // Descripción
+        // Anchos de columna
+        tabla.setRowHeight(28);
+        tabla.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        tabla.getTableHeader().setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 12));
+        tabla.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_OFF);
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(115); // Código
+        tabla.getColumnModel().getColumn(1).setPreferredWidth(80);  // Tipo
+        tabla.getColumnModel().getColumn(2).setPreferredWidth(50);  // Línea
+        tabla.getColumnModel().getColumn(3).setPreferredWidth(40);  // Col.
+        tabla.getColumnModel().getColumn(4).setPreferredWidth(350); // Descripción
+        tabla.getColumnModel().getColumn(5).setPreferredWidth(390); // Sugerencia
 
-        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(tabla);
-        ventanaErrores.add(scroll);
+        // Colorear filas según tipo de error
+        tabla.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(
+                    javax.swing.JTable t, Object val, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, val, sel, foc, row, col);
+                if (!sel) {
+                    String tipo = (String) t.getValueAt(row, 1);
+                    if ("Léxico".equals(tipo))      setBackground(new java.awt.Color(255, 230, 230));
+                    else if ("Sintáctico".equals(tipo)) setBackground(new java.awt.Color(255, 245, 210));
+                    else if ("Semántico".equals(tipo))  setBackground(new java.awt.Color(230, 240, 255));
+                    else setBackground(java.awt.Color.WHITE);
+                    setForeground(java.awt.Color.BLACK);
+                }
+                return this;
+            }
+        });
+
+        // Resumen en la parte superior
+        long numLex = errors.stream().filter(e -> e.getDescription().contains("LexError")).count();
+        long numSin = errors.stream().filter(e -> e.getDescription().contains("SinError")).count();
+        long numSem = errors.stream().filter(e -> e.getDescription().contains("SemError")).count();
+        String resumen = String.format("Total: %d error(es)  |  🔴 Léxicos: %d  |  🟡 Sintácticos: %d  |  🔵 Semánticos: %d",
+                errors.size(), numLex, numSin, numSem);
+        javax.swing.JLabel lblResumen = new javax.swing.JLabel(resumen);
+        lblResumen.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 12));
+        lblResumen.setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 10, 6, 10));
+
+        ventanaErrores.setLayout(new java.awt.BorderLayout());
+        ventanaErrores.add(lblResumen, java.awt.BorderLayout.NORTH);
+        ventanaErrores.add(new javax.swing.JScrollPane(tabla), java.awt.BorderLayout.CENTER);
         ventanaErrores.setVisible(true);
     }
 
@@ -402,16 +428,16 @@ public class Compilador extends javax.swing.JFrame {
         }
 
         if (!hasAutomatonType) {
-            errors.add(new ErrorLSSL(1, "[SemError 001] Falta la declaración del tipo de autómata: TIPO AFD; o TIPO AFN;", null));
+            errors.add(new ErrorLSSL(1, "[SemError 001] No se declaró el tipo de autómata. | ✏ Agrega al inicio del programa: TIPO AFD;  ó  TIPO AFN;", null));
         }
         if (initialStates.isEmpty()) {
-            errors.add(new ErrorLSSL(1, "[SemError 002] Falta declarar el estado inicial con INICIO <estado>;", null));
+            errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ALFABETO)", null));
         }
         if (finalStates.isEmpty()) {
-            errors.add(new ErrorLSSL(1, "[SemError 003] Falta declarar al menos un estado final con FINAL <estado>;", null));
+            errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
         }
         if (alphabetSymbols.isEmpty()) {
-            errors.add(new ErrorLSSL(1, "[SemError 004] Falta declarar el alfabeto con ALFABETO { 'a', 'b' };", null));
+            errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO)", null));
         }
 
         Pattern transitionPattern = Pattern.compile("([A-Za-z0-9_]+)\\s*->\\s*([A-Za-z0-9_]+)\\s*\\[\\s*([^\\]]+)\\s*\\]\\s*;");
@@ -425,10 +451,10 @@ public class Compilador extends javax.swing.JFrame {
             String symbolText = matcher.group(3).trim();
 
             if (!declaredStates.contains(origin)) {
-                errors.add(new ErrorLSSL(1, "[SemError 005] Origen de transición no declarado: " + origin, null));
+                errors.add(new ErrorLSSL(1, "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrega: ESTADO " + origin + ";  (o INICIO " + origin + "; si es el estado inicial)", null));
             }
             if (!declaredStates.contains(destination)) {
-                errors.add(new ErrorLSSL(1, "[SemError 006] Destino de transición no declarado: " + destination, null));
+                errors.add(new ErrorLSSL(1, "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrega: ESTADO " + destination + ";  (antes de las transiciones)", null));
             }
 
             String[] parts = symbolText.split(",");
@@ -438,15 +464,15 @@ public class Compilador extends javax.swing.JFrame {
                     tokenValue = tokenValue.substring(1, tokenValue.length() - 1);
                 }
                 if (tokenValue.equals("EPSILON") && !hasEpsilon) {
-                    errors.add(new ErrorLSSL(1, "[SemError 007] Se usa EPSILON en una transición, pero no se declaró en el alfabeto.", null));
+                    errors.add(new ErrorLSSL(1, "[SemError 007] Se usa EPSILON en una transición pero no está en el alfabeto. | ✏ Agrega EPSILON al alfabeto: ALFABETO { ..., EPSILON };  (solo válido en AFN)", null));
                 } else if (!tokenValue.equals("EPSILON") && !alphabetSymbols.contains(tokenValue)) {
-                    errors.add(new ErrorLSSL(1, "[SemError 008] Símbolo de transición no pertenece al alfabeto: " + tokenValue, null));
+                    errors.add(new ErrorLSSL(1, "[SemError 008] El símbolo '" + tokenValue + "' se usa en una transición pero no pertenece al alfabeto. | ✏ Agrégalo al alfabeto: ALFABETO { ..., '" + tokenValue + "' };", null));
                 }
             }
         }
 
         if (transitionCount == 0) {
-            errors.add(new ErrorLSSL(1, "[SemError 009] No se encontró ninguna transición válida. Un autómata debe contener al menos una transición.", null));
+            errors.add(new ErrorLSSL(1, "[SemError 009] No se encontró ninguna transición en el programa. | ✏ Agrega al menos una: q0 -> q1 ['a'];", null));
         }
     }
 
@@ -833,31 +859,60 @@ public class Compilador extends javax.swing.JFrame {
             panel_Salida.setForeground(new Color(0, 150, 0)); // Verde
             panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos ni sintácticos.");
         } else {
-            // Si hay errores, los mostramos en rojo con un formato claro
             panel_Salida.setForeground(Color.RED);
             StringBuilder consola = new StringBuilder();
-
-            // 🌟 1. Extraemos TODO el texto directamente de tu editor visual
             String codigoCompleto = panel_Codigo.getText();
-            // 🌟 2. Lo dividimos en un arreglo (cada elemento es una línea)
             String[] lineasDeCodigo = codigoCompleto.split("\\r?\\n");
 
-            consola.append("❌ Se encontraron ").append(errors.size()).append(" error(es):\n\n");
+            // Conteo por categoría
+            long numLex = errors.stream().filter(e -> e.getDescription().contains("LexError")).count();
+            long numSin = errors.stream().filter(e -> e.getDescription().contains("SinError")).count();
+            long numSem = errors.stream().filter(e -> e.getDescription().contains("SemError")).count();
+
+            consola.append("❌ Compilación con errores — ")
+                   .append(errors.size()).append(" error(es) encontrado(s)\n");
+            if (numLex > 0) consola.append("   🔴 Léxicos    : ").append(numLex).append("\n");
+            if (numSin > 0) consola.append("   🟡 Sintácticos: ").append(numSin).append("\n");
+            if (numSem > 0) consola.append("   🔵 Semánticos : ").append(numSem).append("\n");
+            consola.append("\n");
 
             for (ErrorLSSL error : errors) {
+                String desc = error.getDescription();
                 int numLinea = error.getLine();
-                String fragmentoCodigo = "<Línea vacía o no encontrada>";
 
-                // Extraemos la línea de código exacta (los arreglos empiezan en 0, las líneas en 1)
-                if (numLinea > 0 && numLinea <= lineasDeCodigo.length) {
-                    fragmentoCodigo = lineasDeCodigo[numLinea - 1].trim();
+                // Categoría
+                String categoria = desc.contains("LexError") ? "LÉXICO"
+                                 : desc.contains("SinError") ? "SINTÁCTICO"
+                                 : desc.contains("SemError") ? "SEMÁNTICO" : "ERROR";
+
+                // Separar descripción de sugerencia
+                String descripcion = desc;
+                String sugerencia  = null;
+                int sepIdx = desc.indexOf(" | ✏ ");
+                if (sepIdx >= 0) {
+                    descripcion = desc.substring(0, sepIdx);
+                    sugerencia  = desc.substring(sepIdx + 5);
                 }
 
-                // 🌟 3. Damos un formato estructurado y fácil de leer
-                consola.append("► Error en la Línea ").append(numLinea).append(":\n");
-                consola.append("   Detalle : ").append(error.toString()).append("\n");
-                consola.append("   Código  : ").append(fragmentoCodigo).append("\n");
-                consola.append("--------------------------------------------------------\n");
+                // Línea del código fuente
+                String fragmento = "";
+                if (numLinea > 0 && numLinea <= lineasDeCodigo.length) {
+                    fragmento = lineasDeCodigo[numLinea - 1].trim();
+                }
+
+                // Formato en consola
+                consola.append("┌─ [").append(categoria).append("]");
+                if (numLinea > 0) consola.append("  Línea ").append(numLinea)
+                                         .append(", Col. ").append(error.getColumn());
+                consola.append("\n");
+                consola.append("│  ").append(descripcion).append("\n");
+                if (!fragmento.isEmpty()) {
+                    consola.append("│  ► ").append(fragmento).append("\n");
+                }
+                if (sugerencia != null && !sugerencia.isEmpty()) {
+                    consola.append("│  ✏ ").append(sugerencia).append("\n");
+                }
+                consola.append("└─────────────────────────────────────────────────\n\n");
             }
             panel_Salida.setText(consola.toString());
         }
