@@ -56,6 +56,11 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     "{" | "}" | 
     "'" | ";" | ","    { return textColor(yychar, yylength(), new Color(100, 100, 100)); }
 
+    /* Colores válidos para FONDO (Ámbar dorado) */
+    "blanco" | "negro" | "rojo" | "azul" | "verde" | "amarillo" |
+    "naranja" | "gris" | "rosa" | "morado" | "violeta" | "cyan" | "marron"
+                       { return textColor(yychar, yylength(), new Color(180, 100, 0)); }
+
     /* Identificadores normales (Negro) */
     {Identifier}       { return textColor(yychar, yylength(), new Color(0, 0, 0)); }
 

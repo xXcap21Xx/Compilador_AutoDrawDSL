@@ -8,6 +8,7 @@ public class sym {
   /* terminals */
   public static final int COMILLA_SIMPLE = 16;
   public static final int AFN = 10;
+  public static final int COLOR = 20;
   public static final int FLECHA = 11;
   public static final int AFD = 9;
   public static final int TIPO = 2;
@@ -19,7 +20,7 @@ public class sym {
   public static final int EPSILON = 7;
   public static final int CORCHETE_DER = 13;
   public static final int FINAL = 5;
-  public static final int error = 1;
+  public static final int ERROR = 1;
   public static final int IDENTIFICADOR = 19;
   public static final int LLAVE_IZQ = 14;
   public static final int LLAVE_DER = 15;
@@ -46,7 +47,8 @@ public class sym {
   "COMILLA_SIMPLE",
   "PUNTO_Y_COMA",
   "COMA",
-  "IDENTIFICADOR"
+  "IDENTIFICADOR",
+  "COLOR"
   };
 }
 

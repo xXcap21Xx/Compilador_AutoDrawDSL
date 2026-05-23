@@ -33,25 +33,98 @@ parser code {:
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        if (t != null) {
-            String lexema = t.getLexeme();
-            if (tokenAnterior != null) {
-                String desc = "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + 
-                              "'. ¿Falta un punto y coma (;) después de '" + tokenAnterior.getLexeme() + "'?";
-                errors.add(new ErrorLSSL(1, desc, tokenAnterior));
-            } else {
-                errors.add(new ErrorLSSL(1, "[SinError 010] Error Sintáctico: Token inesperado '" + lexema + "'", t));
-            }
+        Token ref = (t != null) ? t : tokenAnterior;
+        String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
+        String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
+        String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
+        String lexAnterior  = (tokenAnterior != null) ? tokenAnterior.getLexeme() : "";
+
+        String mensaje;
+        switch (compAnterior) {
+            case "TIPO":
+                mensaje = "[SinError 010] Después de TIPO se esperaba AFD o AFN, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: TIPO AFD;  ó  TIPO AFN;"; break;
+            case "ALFABETO":
+                mensaje = "[SinError 010] Después de ALFABETO se esperaba '{', pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+            case "LLAVE_IZQ":
+                mensaje = "[SinError 010] Dentro de '{...}' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+            case "LLAVE_DER":
+                mensaje = "[SinError 010] Después de '}' se esperaba ';', pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+            case "INICIO":
+                mensaje = "[SinError 010] Después de INICIO se esperaba el nombre del estado inicial, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: INICIO q0;"; break;
+            case "ESTADO":
+                mensaje = "[SinError 010] Después de ESTADO se esperaba el nombre del estado, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ESTADO q1;"; break;
+            case "FINAL":
+                mensaje = "[SinError 010] Después de FINAL se esperaba el nombre del estado final, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;"; break;
+            case "FONDO":
+                mensaje = "[SinError 010] Después de FONDO se esperaba un color válido, pero se encontró '"
+                        + lexActual + "'. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron"; break;
+            case "FLECHA":
+                mensaje = "[SinError 010] En la transición, después de '->' se esperaba el estado destino, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+            case "CORCHETE_IZQ":
+                mensaje = "[SinError 010] Dentro de '[...]' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
+            case "CORCHETE_DER":
+                mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+            case "COMA":
+                mensaje = "[SinError 010] Después de ',' se esperaba otro elemento, pero se encontró '"
+                        + lexActual + "'. | ✏ Ej: ALFABETO { 'a', 'b' };  ó  FINAL q1, q2;"; break;
+            case "COMILLA_SIMPLE":
+                mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'"; break;
+            case "IDENTIFICADOR": case "COLOR":
+                if ("FLECHA".equals(compActual)) {
+                    mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
+                            + " | ✏ Correcto: " + lexAnterior + " -> destino ['símbolo'];";
+                } else if ("PUNTO_Y_COMA".equals(compActual)) {
+                    mensaje = "[SinError 010] Punto y coma inesperado después de '" + lexAnterior + "'."
+                            + " | ✏ ¿La instrucción anterior estaba incompleta?";
+                } else {
+                    mensaje = "[SinError 010] Token inesperado '" + lexActual + "' después de '" + lexAnterior + "'."
+                            + " | ✏ Revisa la sintaxis de esta instrucción.";
+                }
+                break;
+            default:
+                if ("PUNTO_Y_COMA".equals(compActual)) {
+                    mensaje = "[SinError 010] Punto y coma ';' en lugar incorrecto, cerca de '" + lexAnterior + "'."
+                            + " | ✏ ¿Hay un ';' de más o la instrucción anterior estaba incompleta?";
+                } else if ("EOF".equals(compActual) || "<fin de archivo>".equals(lexActual)) {
+                    mensaje = "[SinError 010] Fin de archivo inesperado — el programa está incompleto."
+                            + " | ✏ ¿Falta FINAL <estado>; al final del programa?";
+                } else {
+                    mensaje = "[SinError 010] Token inesperado '" + lexActual + "'"
+                            + (!lexAnterior.isEmpty() ? " después de '" + lexAnterior + "'" : "")
+                            + ". | ✏ Revisa la estructura del programa.";
+                }
         }
+        errors.add(new ErrorLSSL(1, mensaje, ref));
     }
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
-        if (t != null) {
-            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: No se pudo recuperar cerca de '" + t.getLexeme() + "'", t));
+        String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
+        String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
+        String contexto;
+        if ("TIPO".equals(compAnterior) || "ALFABETO".equals(compAnterior) || "FONDO".equals(compAnterior)) {
+            contexto = " | ✏ Verifica la sección de configuración (TIPO, ALFABETO).";
+        } else if ("INICIO".equals(compAnterior) || "ESTADO".equals(compAnterior)) {
+            contexto = " | ✏ Verifica la declaración de estados (INICIO, ESTADO).";
+        } else if ("FLECHA".equals(compAnterior) || "CORCHETE_IZQ".equals(compAnterior) || "CORCHETE_DER".equals(compAnterior)) {
+            contexto = " | ✏ Verifica que las transiciones tengan el formato: estado -> estado ['simbolo'];";
+        } else if ("FINAL".equals(compAnterior)) {
+            contexto = " | ✏ Verifica la declaración de estados finales: FINAL q2;";
         } else {
-            errors.add(new ErrorLSSL(1, "[SinError 011] Error Fatal: Fin de archivo inesperado", null));
+            contexto = " | ✏ Revisa la estructura general del programa.";
         }
+        errors.add(new ErrorLSSL(1, "[SinError 011] Error no recuperable cerca de '" + lexema + "'." + contexto, t));
     }
 :};
 
@@ -61,6 +134,8 @@ terminal EPSILON, FONDO, AFD, AFN;
 terminal FLECHA, CORCHETE_IZQ, CORCHETE_DER, LLAVE_IZQ, LLAVE_DER;
 terminal COMILLA_SIMPLE, PUNTO_Y_COMA, COMA;
 terminal IDENTIFICADOR;
+/* Colores válidos (lexer los reconoce específicamente) */
+terminal COLOR;
 
 /* ====================== NO TERMINALES ====================== */
 non terminal ASTNode Program;
@@ -68,6 +143,8 @@ non terminal ASTNode ConfigSection, StateDeclarationSection, TransitionSection, 
 non terminal ASTNode ConfigType, AlphabetDef, Transition, StartDef, FinalDef, StateDef, BackgroundDef;
 non terminal ASTNode SymbolList, StateList, SymbolVal, TransitionSymbolList;
 non terminal ASTNode StateDeclarationList, TransitionList;
+/* Ident: acepta IDENTIFICADOR o COLOR (un color puede ser nombre de estado o símbolo) */
+non terminal Object Ident;
 
 /* ====================== SÍMBOLO INICIAL ====================== */
 start with Program;
@@ -158,14 +235,21 @@ SymbolList ::= SymbolList:sl COMA SymbolVal:s
     :}
     ;
 
-SymbolVal ::= COMILLA_SIMPLE IDENTIFICADOR:id COMILLA_SIMPLE
-    {: 
+/* Un identificador puede ser un nombre genérico O un nombre de color */
+Ident ::= IDENTIFICADOR:id
+    {: RESULT = id; :}
+    | COLOR:id
+    {: RESULT = id; :}
+    ;
+
+SymbolVal ::= COMILLA_SIMPLE Ident:id COMILLA_SIMPLE
+    {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
         RESULT = new ASTNode("Symbol", t.getLexeme());
     :}
     | EPSILON:e
-    {: 
+    {:
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
         RESULT = new ASTNode("Symbol", "EPSILON");
     :}
@@ -205,7 +289,7 @@ StateDeclarationList ::= StateDeclarationList:sdl StateDef:st
     :}
     ;
 
-StartDef ::= INICIO IDENTIFICADOR:id PUNTO_Y_COMA
+StartDef ::= INICIO Ident:id PUNTO_Y_COMA
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Initial_State", t);
@@ -219,7 +303,7 @@ StartDef ::= INICIO IDENTIFICADOR:id PUNTO_Y_COMA
     :}
     ;
 
-StateDef ::= ESTADO IDENTIFICADOR:id PUNTO_Y_COMA
+StateDef ::= ESTADO Ident:id PUNTO_Y_COMA
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "State_Declared", t);
@@ -258,7 +342,7 @@ TransitionList ::= TransitionList:tl Transition:t
     :}
     ;
 
-Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ TransitionSymbolList:tsl CORCHETE_DER PUNTO_Y_COMA
+Transition ::= Ident:origen FLECHA Ident:destino CORCHETE_IZQ TransitionSymbolList:tsl CORCHETE_DER PUNTO_Y_COMA
     {:
         Token tOri = (Token)origen;
         Token tDes = (Token)destino;
@@ -269,10 +353,10 @@ Transition ::= IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino CORCHETE_IZQ Tr
         parser.addSymbol(tOri.getLexeme() + "->" + tDes.getLexeme(), "Transition_Used", tOri);
         RESULT = node;
     :}
-    | IDENTIFICADOR:origen FLECHA IDENTIFICADOR:destino error PUNTO_Y_COMA
+    | Ident:origen FLECHA Ident:destino error PUNTO_Y_COMA
     {:
         Token tOri = (Token)origen;
-        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
         RESULT = new ASTNode("Transition", "ERROR");
     :}
     ;
@@ -317,14 +401,14 @@ FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
     :}
     ;
 
-StateList ::= StateList:sl COMA IDENTIFICADOR:id
+StateList ::= StateList:sl COMA Ident:id
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Final_State", t);
         sl.addChild(new ASTNode("FinalState", t.getLexeme()));
         RESULT = sl;
     :}
-    | IDENTIFICADOR:id
+    | Ident:id
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Final_State", t);
@@ -334,7 +418,7 @@ StateList ::= StateList:sl COMA IDENTIFICADOR:id
     :}
     ;
 
-BackgroundDef ::= FONDO IDENTIFICADOR:id PUNTO_Y_COMA
+BackgroundDef ::= FONDO COLOR:id PUNTO_Y_COMA
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Background_Color", t);
@@ -342,7 +426,9 @@ BackgroundDef ::= FONDO IDENTIFICADOR:id PUNTO_Y_COMA
     :}
     | FONDO error PUNTO_Y_COMA
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SinError 018] Formato: FONDO <color>;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1,
+            "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+            tokenAnterior));
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     :}
     ;
