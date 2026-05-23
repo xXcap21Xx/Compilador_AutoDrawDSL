@@ -1,7 +1,7 @@
 /* 1. SECCION DE CONFIGURACION */
 TIPO AFD;
 ALFABETO { 'a', 'b' };
-FONDO gris_claro;
+FONDO gris;
 
 /* 2. SECCION DE ESTADOS */
 INICIO q0;
