@@ -30,6 +30,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.JLabel;
 import java.util.Collections;
 import java.util.Comparator;
 import compilerTools.ErrorLSSL;
@@ -94,6 +100,25 @@ public class Compilador extends javax.swing.JFrame {
             timerKeyReleased.restart();
         });
         panel_Codigo.setBackground(Color.WHITE);
+
+        // ── Barra de menú con opciones de análisis ──
+        JMenuBar menuBar = new JMenuBar();
+        JMenu menuAnalisis = new JMenu("Análisis");
+        menuAnalisis.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 13));
+
+        JMenuItem itemTabla = new JMenuItem("Tabla de Transiciones δ");
+        itemTabla.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        itemTabla.addActionListener(e -> mostrarTablaTransiciones());
+
+        JMenuItem itemSimular = new JMenuItem("Simular Cadena...");
+        itemSimular.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        itemSimular.addActionListener(e -> mostrarSimulacionCadena());
+
+        menuAnalisis.add(itemTabla);
+        menuAnalisis.addSeparator();
+        menuAnalisis.add(itemSimular);
+        menuBar.add(menuAnalisis);
+        setJMenuBar(menuBar);
     }
 
     private void colorAnalysis() {
@@ -292,6 +317,7 @@ public class Compilador extends javax.swing.JFrame {
         identProd.clear();
         identificadores.clear();
         codeHasBeenCompiled = false;
+        panel_Codigo.getHighlighter().removeAllHighlights();
     }
 
     private void compile() {
@@ -918,6 +944,7 @@ public class Compilador extends javax.swing.JFrame {
         }
 
         codeHasBeenCompiled = true;
+        resaltarErroresEnEditor();
     }//GEN-LAST:event_btn_CompilarActionPerformed
 
     private void btn_EjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_EjecutarActionPerformed
@@ -963,14 +990,412 @@ public class Compilador extends javax.swing.JFrame {
                 return;
             }
             ASTNode root = (ASTNode) result.value;
-            StringBuilder sb = new StringBuilder();
-            getASTAsString(root, "", sb);
-
-            VentanaArbol ventana = new VentanaArbol(sb.toString());
-            ventana.setVisible(true);
+            new VentanaArbolGrafico(root).setVisible(true);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error al generar el árbol: " + ex.getMessage());
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PUNTO 5 — Subrayado inline de errores en el editor
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Resalta con fondo rojo suave todas las líneas que tengan errores
+     * en el editor (panel_Codigo). Se llama después de compilar.
+     */
+    private void resaltarErroresEnEditor() {
+        javax.swing.text.Highlighter hl = panel_Codigo.getHighlighter();
+        hl.removeAllHighlights();
+        if (errors.isEmpty()) return;
+
+        String text = panel_Codigo.getText();
+        // Calcular posición de inicio de cada línea
+        String[] lines = text.split("\n", -1);
+        int[] lineStart = new int[lines.length + 1];
+        lineStart[0] = 0;
+        for (int i = 0; i < lines.length; i++) {
+            lineStart[i + 1] = lineStart[i] + lines[i].length() + 1; // +1 por \n
+        }
+
+        javax.swing.text.Highlighter.HighlightPainter painter =
+            new javax.swing.text.DefaultHighlighter.DefaultHighlightPainter(new Color(255, 200, 200));
+
+        for (ErrorLSSL error : errors) {
+            int lineNum = error.getLine();
+            if (lineNum > 0 && lineNum <= lines.length) {
+                try {
+                    int start = lineStart[lineNum - 1];
+                    int end   = lineStart[lineNum] - 1; // antes del \n
+                    if (end < start) end = start;
+                    hl.addHighlight(start, end, painter);
+                } catch (javax.swing.text.BadLocationException ex) {
+                    // sin acción — la línea puede haber cambiado
+                }
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PUNTO 2 — Tabla de transiciones δ
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Muestra la tabla de transiciones δ del autómata compilado. */
+    private void mostrarTablaTransiciones() {
+        if (!codeHasBeenCompiled) {
+            JOptionPane.showMessageDialog(this, "Primero debes compilar el código.", "Sin compilar", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El código tiene errores. Corrígelos antes de ver la tabla δ.", "Errores detectados", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // ── Extraer datos del autómata ──────────────────────────────────────
+        String input = panel_Codigo.getText();
+        java.util.List<String> alphabet    = new java.util.ArrayList<>();
+        java.util.List<String> stateOrder  = new java.util.ArrayList<>();
+        String tipoAutomata  = "AFD";
+        String estadoInicial = null;
+        java.util.Set<String> estadosFinales = new java.util.LinkedHashSet<>();
+
+        for (SimboloDSL s : listaSimbolosGlobal) {
+            if (s.tipo == null) continue;
+            switch (s.tipo) {
+                case "Tipo_Automata_AFN": tipoAutomata = "AFN"; break;
+                case "Alphabet_Symbol":
+                    String sym = s.nombre.replace("'", "");
+                    if (!alphabet.contains(sym)) alphabet.add(sym);
+                    break;
+                case "Epsilon_Symbol":
+                    if (!alphabet.contains("ε")) alphabet.add("ε");
+                    break;
+                case "Initial_State":
+                    if (!stateOrder.contains(s.nombre)) stateOrder.add(0, s.nombre); // inicial primero
+                    estadoInicial = s.nombre;
+                    break;
+                case "State_Declared":
+                    if (!stateOrder.contains(s.nombre)) stateOrder.add(s.nombre);
+                    break;
+                case "Final_State":
+                    if (!stateOrder.contains(s.nombre)) stateOrder.add(s.nombre);
+                    estadosFinales.add(s.nombre);
+                    break;
+            }
+        }
+
+        if (stateOrder.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No se encontraron estados declarados.", "Tabla vacía", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // ── Construir mapa delta ────────────────────────────────────────────
+        java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta = new java.util.LinkedHashMap<>();
+        for (String st : stateOrder) delta.put(st, new java.util.LinkedHashMap<>());
+
+        Pattern transPat = Pattern.compile(
+            "([A-Za-z0-9_]+)\\s*->\\s*([A-Za-z0-9_]+)\\s*\\[\\s*([^\\]]+)\\s*\\]\\s*;");
+        Matcher m = transPat.matcher(input);
+        while (m.find()) {
+            String origin = m.group(1);
+            String dest   = m.group(2);
+            for (String rawSym : m.group(3).split(",")) {
+                String sym = rawSym.trim().replace("'", "");
+                if (sym.equalsIgnoreCase("EPSILON")) sym = "ε";
+                delta.computeIfAbsent(origin, k -> new java.util.LinkedHashMap<>())
+                     .computeIfAbsent(sym,    k -> new java.util.ArrayList<>())
+                     .add(dest);
+            }
+        }
+
+        // ── Construir modelo de tabla ───────────────────────────────────────
+        String[] colHeaders = new String[alphabet.size() + 1];
+        colHeaders[0] = "Estado";
+        for (int i = 0; i < alphabet.size(); i++) colHeaders[i + 1] = alphabet.get(i);
+
+        DefaultTableModel model = new DefaultTableModel(colHeaders, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        final String estadoInicialFinal = estadoInicial;
+        for (String state : stateOrder) {
+            Object[] row = new Object[alphabet.size() + 1];
+            boolean isInit  = state.equals(estadoInicialFinal);
+            boolean isFinal = estadosFinales.contains(state);
+            String stateLabel = (isInit && isFinal) ? "→* " + state
+                              : isInit               ? "→ "  + state
+                              : isFinal              ? "* "  + state
+                              :                        "    " + state;
+            row[0] = stateLabel;
+            for (int i = 0; i < alphabet.size(); i++) {
+                java.util.List<String> targets = delta.getOrDefault(state, Collections.emptyMap())
+                                                      .get(alphabet.get(i));
+                if (targets == null || targets.isEmpty()) row[i + 1] = "—";
+                else if (targets.size() == 1)             row[i + 1] = targets.get(0);
+                else                                      row[i + 1] = "{" + String.join(", ", targets) + "}";
+            }
+            model.addRow(row);
+        }
+
+        // ── Tabla con renderer ──────────────────────────────────────────────
+        javax.swing.JTable table = new javax.swing.JTable(model);
+        table.setRowHeight(28);
+        table.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        table.getTableHeader().setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 12));
+        table.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+
+        table.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(
+                    javax.swing.JTable t, Object val, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(t, val, sel, foc, row, col);
+                if (!sel) {
+                    String sv = (String) t.getValueAt(row, 0);
+                    if (sv != null && sv.contains("→") && sv.contains("*")) setBackground(new Color(200, 240, 200));
+                    else if (sv != null && sv.contains("→"))                 setBackground(new Color(255, 255, 190));
+                    else if (sv != null && sv.contains("*"))                 setBackground(new Color(200, 220, 255));
+                    else setBackground(Color.WHITE);
+                    setForeground(Color.BLACK);
+                    setHorizontalAlignment(col == 0 ? LEFT : CENTER);
+                }
+                return this;
+            }
+        });
+
+        // ── Diálogo ─────────────────────────────────────────────────────────
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Tabla de Transiciones δ — " + tipoAutomata, true);
+        dialog.setSize(660, 360);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new java.awt.BorderLayout());
+
+        JPanel headerPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        headerPnl.setBackground(new Color(41, 98, 155));
+        JLabel headerLbl = new JLabel("  Función de Transición δ — " + tipoAutomata
+            + "      →  inicial      *  final      →*  ambos");
+        headerLbl.setForeground(Color.WHITE);
+        headerLbl.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 12));
+        headerPnl.add(headerLbl);
+
+        JPanel legendPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 10, 5));
+        legendPnl.setBackground(new Color(250, 250, 250));
+        legendPnl.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(200, 200, 200)));
+        legendPnl.add(deltaChip(new Color(255, 255, 190), "→  Estado inicial"));
+        legendPnl.add(deltaChip(new Color(200, 220, 255), "*  Estado final"));
+        legendPnl.add(deltaChip(new Color(200, 240, 200), "→*  Inicial y final"));
+
+        dialog.add(headerPnl,  java.awt.BorderLayout.NORTH);
+        dialog.add(new javax.swing.JScrollPane(table), java.awt.BorderLayout.CENTER);
+        dialog.add(legendPnl,  java.awt.BorderLayout.SOUTH);
+        dialog.setVisible(true);
+    }
+
+    /** Chip coloreado pequeño para la leyenda de la tabla δ. */
+    private JPanel deltaChip(Color color, String text) {
+        JPanel chip = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+        chip.setBackground(new Color(250, 250, 250));
+        JPanel sq = new JPanel();
+        sq.setPreferredSize(new java.awt.Dimension(13, 13));
+        sq.setBackground(color);
+        sq.setBorder(BorderFactory.createLineBorder(color.darker(), 1));
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 11));
+        chip.add(sq);
+        chip.add(lbl);
+        return chip;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PUNTO 3 — Simulación de cadenas
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Solicita una cadena y simula su recorrido en el autómata compilado. */
+    private void mostrarSimulacionCadena() {
+        if (!codeHasBeenCompiled) {
+            JOptionPane.showMessageDialog(this, "Primero debes compilar el código.", "Sin compilar", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El código tiene errores. Corrígelos antes de simular.", "Errores detectados", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String cadena = JOptionPane.showInputDialog(this,
+            "Ingresa la cadena a simular:\n(deja vacío para la cadena ε vacía)",
+            "Simulación de Cadena", JOptionPane.PLAIN_MESSAGE);
+        if (cadena == null) return;  // usuario canceló
+
+        // ── Extraer datos ───────────────────────────────────────────────────
+        String input         = panel_Codigo.getText();
+        String tipoAutomata  = "AFD";
+        String estadoInicial = null;
+        java.util.Set<String> estadosFinales = new java.util.LinkedHashSet<>();
+
+        for (SimboloDSL s : listaSimbolosGlobal) {
+            if (s.tipo == null) continue;
+            switch (s.tipo) {
+                case "Tipo_Automata_AFN": tipoAutomata = "AFN"; break;
+                case "Initial_State":  estadoInicial = s.nombre; break;
+                case "Final_State":    estadosFinales.add(s.nombre); break;
+            }
+        }
+
+        if (estadoInicial == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo determinar el estado inicial.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // ── Construir delta ─────────────────────────────────────────────────
+        java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta = new java.util.HashMap<>();
+        Pattern transPat = Pattern.compile(
+            "([A-Za-z0-9_]+)\\s*->\\s*([A-Za-z0-9_]+)\\s*\\[\\s*([^\\]]+)\\s*\\]\\s*;");
+        Matcher m = transPat.matcher(input);
+        while (m.find()) {
+            String origin = m.group(1);
+            String dest   = m.group(2);
+            for (String rawSym : m.group(3).split(",")) {
+                String sym = rawSym.trim().replace("'", "");
+                if (sym.equalsIgnoreCase("EPSILON")) sym = "ε";
+                delta.computeIfAbsent(origin, k -> new java.util.HashMap<>())
+                     .computeIfAbsent(sym,    k -> new java.util.ArrayList<>())
+                     .add(dest);
+            }
+        }
+
+        // ── Simular ─────────────────────────────────────────────────────────
+        StringBuilder log = new StringBuilder();
+        boolean accepted;
+        if ("AFN".equals(tipoAutomata)) {
+            accepted = simulateAFN(cadena, estadoInicial, estadosFinales, delta, log);
+        } else {
+            accepted = simulateAFD(cadena, estadoInicial, estadosFinales, delta, log);
+        }
+
+        // ── Mostrar resultado ────────────────────────────────────────────────
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Simulación de Cadena — " + tipoAutomata, true);
+        dialog.setSize(640, 420);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new java.awt.BorderLayout());
+
+        JPanel headerPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 12, 8));
+        headerPnl.setBackground(accepted ? new Color(0, 120, 50) : new Color(180, 0, 0));
+        JLabel headerLbl = new JLabel(accepted
+            ? "  ✅  Cadena ACEPTADA:  \"" + cadena + "\""
+            : "  ❌  Cadena RECHAZADA:  \"" + cadena + "\"");
+        headerLbl.setForeground(Color.WHITE);
+        headerLbl.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 14));
+        headerPnl.add(headerLbl);
+
+        javax.swing.JTextArea stepsArea = new javax.swing.JTextArea(log.toString());
+        stepsArea.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        stepsArea.setEditable(false);
+        stepsArea.setBackground(new Color(248, 248, 250));
+        stepsArea.setMargin(new java.awt.Insets(10, 14, 10, 14));
+
+        dialog.add(headerPnl, java.awt.BorderLayout.NORTH);
+        dialog.add(new javax.swing.JScrollPane(stepsArea), java.awt.BorderLayout.CENTER);
+        dialog.setVisible(true);
+    }
+
+    /** Simulación determinista AFD paso a paso. */
+    private boolean simulateAFD(String cadena, String estadoInicial,
+            java.util.Set<String> estadosFinales,
+            java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
+            StringBuilder log) {
+        String current = estadoInicial;
+        log.append("Tipo de autómata : AFD\n");
+        log.append("Cadena           : \"").append(cadena).append("\"\n");
+        log.append("Estado inicial   : ").append(current).append("\n\n");
+        log.append(String.format("%-6s %-18s %-6s %-18s%n", "Paso", "Estado actual", "Símbolo", "Estado siguiente"));
+        log.append("─────────────────────────────────────────────\n");
+
+        for (int i = 0; i < cadena.length(); i++) {
+            String sym = String.valueOf(cadena.charAt(i));
+            java.util.List<String> targets = delta
+                .getOrDefault(current, Collections.emptyMap()).get(sym);
+
+            if (targets == null || targets.isEmpty()) {
+                log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", "∅  (trampa)"));
+                log.append("\n❌  La cadena fue RECHAZADA — no existe δ(").append(current)
+                   .append(", '").append(sym).append("').\n");
+                return false;
+            }
+            String next = targets.get(0);
+            log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", next));
+            current = next;
+        }
+
+        log.append("\nEstado final alcanzado: ").append(current).append("\n");
+        boolean accepted = estadosFinales.contains(current);
+        if (accepted) {
+            log.append("✅  '").append(current).append("' es estado final → Cadena ACEPTADA.\n");
+        } else {
+            log.append("❌  '").append(current).append("' no es estado final → Cadena RECHAZADA.\n");
+        }
+        return accepted;
+    }
+
+    /** Simulación no determinista AFN con cierre-ε. */
+    private boolean simulateAFN(String cadena, String estadoInicial,
+            java.util.Set<String> estadosFinales,
+            java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
+            StringBuilder log) {
+        log.append("Tipo de autómata : AFN (con cierre-ε)\n");
+        log.append("Cadena           : \"").append(cadena).append("\"\n\n");
+
+        java.util.Set<String> current = epsilonClosure(
+            Collections.singleton(estadoInicial), delta);
+        log.append("Paso 0 : ε-cierre({").append(estadoInicial).append("}) = ")
+           .append(current).append("\n\n");
+
+        for (int i = 0; i < cadena.length(); i++) {
+            String sym = String.valueOf(cadena.charAt(i));
+            java.util.Set<String> rawNext = new java.util.LinkedHashSet<>();
+            for (String state : current) {
+                java.util.List<String> targets =
+                    delta.getOrDefault(state, Collections.emptyMap()).get(sym);
+                if (targets != null) rawNext.addAll(targets);
+            }
+            java.util.Set<String> next = epsilonClosure(rawNext, delta);
+            log.append("Paso ").append(i + 1)
+               .append(" : δ̂(").append(current).append(", '").append(sym).append("')")
+               .append(" = ε-cierre(").append(rawNext).append(")")
+               .append(" = ").append(next).append("\n");
+            current = next;
+            if (current.isEmpty()) {
+                log.append("\nConjunto de estados vacío → Cadena RECHAZADA.\n");
+                return false;
+            }
+        }
+
+        log.append("\nConjunto final: ").append(current).append("\n");
+        boolean accepted = current.stream().anyMatch(estadosFinales::contains);
+        if (accepted) {
+            java.util.Set<String> inter = new java.util.LinkedHashSet<>(current);
+            inter.retainAll(estadosFinales);
+            log.append("✅  Contiene estado(s) final(es) ").append(inter).append(" → Cadena ACEPTADA.\n");
+        } else {
+            log.append("❌  Ningún estado en ").append(current).append(" es final → Cadena RECHAZADA.\n");
+        }
+        return accepted;
+    }
+
+    /** Calcula el cierre-ε de un conjunto de estados. */
+    private java.util.Set<String> epsilonClosure(
+            java.util.Set<String> states,
+            java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta) {
+        java.util.Set<String> closure = new java.util.LinkedHashSet<>(states);
+        java.util.Deque<String> stack  = new java.util.ArrayDeque<>(states);
+        while (!stack.isEmpty()) {
+            String st = stack.pop();
+            java.util.List<String> eps =
+                delta.getOrDefault(st, Collections.emptyMap()).get("ε");
+            if (eps != null) {
+                for (String t : eps) {
+                    if (closure.add(t)) stack.push(t);
+                }
+            }
+        }
+        return closure;
     }
 
     /**
