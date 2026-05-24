@@ -6,6 +6,8 @@ import javax.swing.*;
  * Ventana (JFrame) que muestra el árbol de derivación AST
  * de forma gráfica usando PanelArbolGrafico.
  */
+
+//ventana para mostrar el arbol de derivacion sintactica
 public class VentanaArbolGrafico extends JFrame {
 
     public VentanaArbolGrafico(ASTNode root) {
