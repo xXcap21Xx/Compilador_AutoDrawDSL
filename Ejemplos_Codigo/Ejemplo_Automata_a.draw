@@ -1,0 +1,10 @@
+/* Un autómata simple que acepta puras 'a' (o vacío) */
+
+TIPO AFD;
+ALFABETO { 'a' };
+
+INICIO unico_estado;
+
+unico_estado -> unico_estado ['a'];
+
+FINAL unico_estado;

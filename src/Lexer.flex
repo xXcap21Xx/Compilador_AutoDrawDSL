@@ -64,6 +64,21 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     ";"                { return token(yytext(), "PUNTO_Y_COMA", yyline, yycolumn, sym.PUNTO_Y_COMA); }
     ","                { return token(yytext(), "COMA", yyline, yycolumn, sym.COMA); }
 
+    /* Colores válidos para FONDO (deben ir ANTES que el Identifier genérico) */
+    "blanco"           { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "negro"            { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "rojo"             { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "azul"             { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "verde"            { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "amarillo"         { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "naranja"          { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "gris"             { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "rosa"             { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "morado"           { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "violeta"          { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "cyan"             { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+    "marron"           { return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
+
     /* Identificadores (nombres de estados o variables) */
     {Identifier}       { return token(yytext(), "IDENTIFICADOR", yyline, yycolumn, sym.IDENTIFICADOR); }
 
