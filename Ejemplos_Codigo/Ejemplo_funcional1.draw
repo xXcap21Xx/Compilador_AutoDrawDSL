@@ -2,12 +2,10 @@
 TIPO AFD;
 ALFABETO { 'a', 'b' };
 FONDO gris;
-
 /* 2. SECCION DE ESTADOS */
 INICIO q0;
 ESTADO q1;
 ESTADO q2;
-
 /* 3. SECCION DE TRANSICIONES */
 q0 -> q0 ['a'];
 q0 -> q1 ['b'];
@@ -15,6 +13,5 @@ q1 -> q0 ['a'];
 q1 -> q2 ['b'];
 q2 -> q0 ['a'];
 q2 -> q2 ['b'];
-
 /* 4. SECCION DE ACEPTACION */
 FINAL q2;

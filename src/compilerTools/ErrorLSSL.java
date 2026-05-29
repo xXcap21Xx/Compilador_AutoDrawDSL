@@ -22,10 +22,15 @@ public class ErrorLSSL {
     }
 
     /**
-     * Obtiene el código del error
-     * @return Código del error
+     * Obtiene el código del error: 1=Léxico, 2=Sintáctico, 3=Semántico
+     * @return Código del error derivado de la descripción
      */
     public int getCode() {
+        if (description != null) {
+            if (description.contains("LexError")) return 1;
+            if (description.contains("SinError")) return 2;
+            if (description.contains("SemError")) return 3;
+        }
         return code;
     }
 

@@ -5,42 +5,31 @@ import javax.swing.UnsupportedLookAndFeelException;
 
 import compilerTools.ASTNode;
 import compilerTools.Directory;
+import compilerTools.ErrorLSSL;
 import compilerTools.Functions;
-import compilerTools.Grammar;
-import compilerTools.Production;
 import compilerTools.TextColor;
 import compilerTools.Token;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.JOptionPane;
-import javax.swing.Timer;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.BorderFactory;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JLabel;
-import java.util.Collections;
-import java.util.Comparator;
-import compilerTools.ErrorLSSL;
-import java.io.ByteArrayInputStream;
-import java.io.Reader;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -55,12 +44,8 @@ public class Compilador extends javax.swing.JFrame {
     private ArrayList<ErrorLSSL> errors;
     private ArrayList<TextColor> textsColor;
     private Timer timerKeyReleased;
-    private ArrayList<Production> identProd;
-    private HashMap<String, String> identificadores;
     private boolean codeHasBeenCompiled = false;
-    private java.util.List<SimboloDSL> listaSimbolos = new java.util.ArrayList<>();
     private java.util.List<SimboloDSL> listaSimbolosGlobal = new java.util.ArrayList<>();
-    private Object compilerTools;
 
     /**
      * Creates new form Compilador
@@ -94,8 +79,6 @@ public class Compilador extends javax.swing.JFrame {
         tokens = new ArrayList<>();
         errors = new ArrayList<>();
         textsColor = new ArrayList<>();
-        identProd = new ArrayList<>();
-        identificadores = new HashMap<>();
         Functions.setAutocompleterJTextComponent(new String[]{"color", "numero", "este", "oeste", "sur", "norte", "pintar"}, panel_Codigo, () -> { //Corregir para proyecto
             timerKeyReleased.restart();
         });
@@ -122,63 +105,20 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     private void colorAnalysis() {
-        /* Limpiar el arreglo de colores */
         textsColor.clear();
-        /* Extraer rangos de colores */
-        LexerColor lexerColor;
         try {
-            File codigo = new File("color.encrypter");
-            FileOutputStream output = new FileOutputStream(codigo);
-            byte[] bytesText = panel_Codigo.getText().getBytes();
-            output.write(bytesText);
-            BufferedReader entrada = new BufferedReader(new InputStreamReader(new FileInputStream(codigo), "UTF8"));
-            lexerColor = new LexerColor(entrada);
+            LexerColor lexerColor = new LexerColor(new java.io.StringReader(panel_Codigo.getText()));
             while (true) {
                 TextColor textColor = lexerColor.yylex();
-                if (textColor == null) {
-                    break;
-                }
+                if (textColor == null) break;
                 textsColor.add(textColor);
             }
-        } catch (FileNotFoundException ex) {
-            System.out.println("El archivo no pudo ser encontrado... " + ex.getMessage());
         } catch (IOException ex) {
-            System.out.println("Error al escribir en el archivo... " + ex.getMessage());
+            System.err.println("Error en análisis de color: " + ex.getMessage());
         }
         Functions.colorTextPane(textsColor, panel_Codigo, Color.WHITE);
     }
 
-    private void getASTAsString(ASTNode node, String prefix, StringBuilder sb) {
-        if (node == null) {
-            return;
-        }
-
-        // Agregar el nodo actual al StringBuilder
-        sb.append(prefix);
-        sb.append(node.label != null ? node.label : "Node");
-        if (node.value != null && !node.value.isEmpty()) {
-            sb.append(": ").append(node.value);
-        }
-        sb.append("\n");
-
-        // Recorrer hijos
-        if (node.children != null) {
-            for (int i = 0; i < node.children.size(); i++) {
-                ASTNode child = node.children.get(i);
-                // Lógica para dibujar las líneas del árbol
-                boolean isLast = (i == node.children.size() - 1);
-                String newPrefix = prefix + (isLast ? "    " : "│   ");
-                String childPrefix = prefix + (isLast ? "└── " : "├── ");
-
-                // Llamada recursiva
-                // Pero para los hijos de los hijos pasamos newPrefix
-                getASTAsString(child, prefix + (isLast ? "    " : "│   "), sb);
-
-                // NOTA: Para simplificarlo visualmente, a veces es mejor hacerlo así:
-                // getASTAsString(child, prefix + "    ", sb);
-            }
-        }
-    }
 
     private void mostrarVentanaErrores() {
         if (errors.isEmpty()) {
@@ -287,9 +227,6 @@ public class Compilador extends javax.swing.JFrame {
             return;
         }
 
-        // Mensaje de prueba para la consola de NetBeans
-        System.out.println("Abriendo ventana. Total de símbolos a dibujar: " + listaSimbolosGlobal.size());
-
         javax.swing.JDialog ventana = new javax.swing.JDialog(this, "Tabla de Símbolos", true);
         ventana.setSize(600, 400);
         ventana.setLocationRelativeTo(this);
@@ -314,219 +251,254 @@ public class Compilador extends javax.swing.JFrame {
         panel_Salida.setText("");
         tokens.clear();
         errors.clear();
-        identProd.clear();
-        identificadores.clear();
         codeHasBeenCompiled = false;
         panel_Codigo.getHighlighter().removeAllHighlights();
     }
 
-    private void compile() {
-        clearFields();
-        lexicalAnalysis();
-        fieldTableTokens();
-        syntacticAnalysis();
-        semanticAnalysis();
-        printConsole();
-        codeHasBeenCompiled = true;
-    }
 
-    private void lexicalAnalysis() {
-        // Extraer tokens
-        tokens.clear();
-        Lexer lexer;
-        try {
-            // 1) Guardar texto en archivo temporal
-            File codigo = new File("code.encrypter");
-            try (FileOutputStream output = new FileOutputStream(codigo)) {
-                byte[] bytesText = panel_Codigo.getText()
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                output.write(bytesText);
-            }
 
-            // 2) Abrir reader en UTF-8 y crear el Lexer
-            try (BufferedReader entrada = new BufferedReader(
-                    new InputStreamReader(new FileInputStream(codigo), java.nio.charset.StandardCharsets.UTF_8))) {
-                lexer = new Lexer(entrada);
+    private void semanticAnalysis(ASTNode root) {
+        if (root == null) return;
 
-                // 3) Leer símbolos hasta EOF
-                while (true) {
-                    java_cup.runtime.Symbol symbol = lexer.next_token();
-                    if (symbol == null) {
-                        break;
-                    }
-                    // Aquí “sym” es la clase; “symbol” es la variable
-                    if (symbol.sym == sym.EOF) {
-                        break;
-                    }
-                    Token token = (Token) symbol.value;
-                    tokens.add(token);
-                }
-            }
-        } catch (FileNotFoundException ex) {
-            System.err.println("El archivo no pudo ser encontrado: " + ex.getMessage());
-        } catch (IOException ex) {
-            System.err.println("Error de E/S con el archivo: " + ex.getMessage());
-        }
-    }
-
-    private void fieldTableTokens() {
-        tokens.forEach(token -> {
-            Object[] data = new Object[]{token.getLexicalComp(), token.getLexeme(), "[" + token.getLine() + "," + token.getColumn() + "]"};
-            Functions.addRowDataInTable(tbl_Token, data);
-        });
-    }
-
-    private void syntacticAnalysis() {
-        errors.clear(); // Limpia errores anteriores
-        try {
-            String code = panel_Codigo.getText();
-            Reader reader = new java.io.StringReader(code);
-            Lexer lexer = new Lexer(reader);
-
-            Parser parser = new Parser(lexer);
-            java_cup.runtime.Symbol result = parser.parse();
-
-            errors.addAll(parser.errors);
-
-            // Mostrar errores o éxito
-            if (!errors.isEmpty()) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("Errores sintácticos detectados:\n");
-                for (compilerTools.ErrorLSSL err : errors) {
-                    sb.append(err.toString()).append("\n");
-                }
-                panel_Salida.setText(sb.toString());
-            } else {
-                panel_Salida.setText("Compilación sintáctica exitosa. No se detectaron errores.");
-
-                // Mostrar el árbol de derivación en consola
-                ASTNode root = (ASTNode) result.value;
-                printAST(root, "");
-            }
-        } catch (Exception ex) {
-            panel_Salida.setText("Error durante el análisis sintáctico: " + ex.getMessage());
-        }
-    }
-
-    private void semanticAnalysis() {
-        semanticAnalysis(panel_Codigo.getText());
-    }
-
-    private void semanticAnalysis(String input) {
-        if (input == null || input.trim().isEmpty()) {
-            return;
-        }
-
-        Set<String> alphabetSymbols = new HashSet<>();
         Set<String> declaredStates = new HashSet<>();
-        Set<String> finalStates = new HashSet<>();
-        Set<String> initialStates = new HashSet<>();
-        boolean hasAutomatonType = false;
-        boolean hasEpsilon = false;
+        Set<String> finalStates    = new HashSet<>();
+        Set<String> initialStates  = new HashSet<>();
+        boolean hasAutomatonType   = false;
+        boolean hasEpsilon         = false;
 
-        for (SimboloDSL symbol : listaSimbolosGlobal) {
-            if (symbol.tipo == null) {
-                continue;
-            }
-            switch (symbol.tipo) {
-                case "Alphabet_Symbol":
-                    alphabetSymbols.add(symbol.nombre.replace("'", ""));
-                    break;
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            if (sym.tipo == null) continue;
+            switch (sym.tipo) {
                 case "Epsilon_Symbol":
                     hasEpsilon = true;
-                    alphabetSymbols.add("EPSILON");
                     break;
                 case "State_Declared":
                 case "Final_State":
                 case "Initial_State":
-                    declaredStates.add(symbol.nombre);
+                    declaredStates.add(sym.nombre);
                     break;
             }
-            if (symbol.tipo.equals("Tipo_Automata_AFD") || symbol.tipo.equals("Tipo_Automata_AFN")) {
+            if ("Tipo_Automata_AFD".equals(sym.tipo) || "Tipo_Automata_AFN".equals(sym.tipo))
                 hasAutomatonType = true;
-            }
-            if (symbol.tipo.equals("Final_State")) {
-                finalStates.add(symbol.nombre);
-            }
-            if (symbol.tipo.equals("Initial_State")) {
-                initialStates.add(symbol.nombre);
-            }
+            if ("Final_State".equals(sym.tipo))   finalStates.add(sym.nombre);
+            if ("Initial_State".equals(sym.tipo)) initialStates.add(sym.nombre);
         }
 
-        if (!hasAutomatonType) {
+        // Alfabeto extraído solo del nodo AlphabetDefinition del AST
+        Set<String> alphabetSymbols = new HashSet<>();
+        if (hasEpsilon) alphabetSymbols.add("EPSILON");
+        collectAlphabet(root, alphabetSymbols);
+
+        if (!hasAutomatonType)
             errors.add(new ErrorLSSL(1, "[SemError 001] No se declaró el tipo de autómata. | ✏ Agrega al inicio del programa: TIPO AFD;  ó  TIPO AFN;", null));
-        }
-        if (initialStates.isEmpty()) {
+        if (initialStates.isEmpty())
             errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ALFABETO)", null));
-        }
-        if (finalStates.isEmpty()) {
+        if (finalStates.isEmpty())
             errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
-        }
-        if (alphabetSymbols.isEmpty()) {
+        if (alphabetSymbols.isEmpty())
             errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO)", null));
+
+        boolean isAFD = false;
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            if ("Tipo_Automata_AFD".equals(sym.tipo)) { isAFD = true; break; }
         }
 
-        Pattern transitionPattern = Pattern.compile("([A-Za-z0-9_]+)\\s*->\\s*([A-Za-z0-9_]+)\\s*\\[\\s*([^\\]]+)\\s*\\]\\s*;");
-        Matcher matcher = transitionPattern.matcher(input);
-        int transitionCount = 0;
+        int transitionCount = validateTransitions(root, declaredStates, alphabetSymbols, hasEpsilon,
+                new HashMap<>(), new HashSet<>());
 
-        while (matcher.find()) {
-            transitionCount++;
-            String origin = matcher.group(1);
-            String destination = matcher.group(2);
-            String symbolText = matcher.group(3).trim();
-
-            if (!declaredStates.contains(origin)) {
-                errors.add(new ErrorLSSL(1, "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrega: ESTADO " + origin + ";  (o INICIO " + origin + "; si es el estado inicial)", null));
-            }
-            if (!declaredStates.contains(destination)) {
-                errors.add(new ErrorLSSL(1, "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrega: ESTADO " + destination + ";  (antes de las transiciones)", null));
-            }
-
-            String[] parts = symbolText.split(",");
-            for (String part : parts) {
-                String tokenValue = part.trim();
-                if (tokenValue.startsWith("'") && tokenValue.endsWith("'")) {
-                    tokenValue = tokenValue.substring(1, tokenValue.length() - 1);
-                }
-                if (tokenValue.equals("EPSILON") && !hasEpsilon) {
-                    errors.add(new ErrorLSSL(1, "[SemError 007] Se usa EPSILON en una transición pero no está en el alfabeto. | ✏ Agrega EPSILON al alfabeto: ALFABETO { ..., EPSILON };  (solo válido en AFN)", null));
-                } else if (!tokenValue.equals("EPSILON") && !alphabetSymbols.contains(tokenValue)) {
-                    errors.add(new ErrorLSSL(1, "[SemError 008] El símbolo '" + tokenValue + "' se usa en una transición pero no pertenece al alfabeto. | ✏ Agrégalo al alfabeto: ALFABETO { ..., '" + tokenValue + "' };", null));
-                }
-            }
-        }
-
-        if (transitionCount == 0) {
+        if (transitionCount == 0)
             errors.add(new ErrorLSSL(1, "[SemError 009] No se encontró ninguna transición en el programa. | ✏ Agrega al menos una: q0 -> q1 ['a'];", null));
-        }
+
+        if (isAFD && transitionCount > 0)
+            checkDeterminism(root);
+
+        checkUnusedStates(root, initialStates, finalStates);
     }
 
-    private void printAST(ASTNode node, String indent) {
-        if (node == null) {
+    /** Recorre el AST hasta AlphabetDefinition y recoge sus Symbol hijos. */
+    private void collectAlphabet(ASTNode node, Set<String> out) {
+        if (node == null) return;
+        if ("AlphabetDefinition".equals(node.label)) {
+            gatherSymbols(node, out);
             return;
         }
-        String display = node.label + (node.value != null && !node.value.isEmpty() ? ": " + node.value : "");
-        System.out.println(indent + display);
-        for (ASTNode child : node.children) {
-            printAST(child, indent + "  ");
+        for (ASTNode child : node.children)
+            collectAlphabet(child, out);
+    }
+
+    /** Recoge recursivamente todos los nodos Symbol dentro de un subárbol. */
+    private void gatherSymbols(ASTNode node, Set<String> out) {
+        if (node == null) return;
+        if ("Symbol".equals(node.label) && node.value != null)
+            out.add(node.value);
+        for (ASTNode child : node.children)
+            gatherSymbols(child, out);
+    }
+
+    /** Recorre el AST validando cada nodo Transition; retorna el total encontrado. */
+    private int validateTransitions(ASTNode node, Set<String> declaredStates,
+                                    Set<String> alphabetSymbols, boolean hasEpsilon,
+                                    HashMap<String, Integer> counter, Set<String> reportedErrors) {
+        if (node == null) return 0;
+        if ("Transition".equals(node.label)) {
+            String origin = null, destination = null;
+            Set<String> usedSymbols = new HashSet<>();
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label))                   origin      = child.value;
+                else if ("To".equals(child.label))                destination = child.value;
+                else if ("TransitionSymbols".equals(child.label)) gatherSymbols(child, usedSymbols);
+            }
+            Token locTok = findTransitionToken(origin, destination, counter);
+            if (origin != null && !declaredStates.contains(origin)) {
+                String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrega: ESTADO " + origin + ";  (o INICIO " + origin + "; si es el estado inicial)";
+                if (reportedErrors.add(msg))
+                    errors.add(new ErrorLSSL(1, msg, locTok));
+            }
+            if (destination != null && !declaredStates.contains(destination)) {
+                String msg = "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrega: ESTADO " + destination + ";  (antes de las transiciones)";
+                if (reportedErrors.add(msg))
+                    errors.add(new ErrorLSSL(1, msg, locTok));
+            }
+            for (String sym : usedSymbols) {
+                if ("EPSILON".equals(sym) && !hasEpsilon) {
+                    String msg = "[SemError 007] Se usa EPSILON en una transición pero no está en el alfabeto. | ✏ Agrega EPSILON al alfabeto: ALFABETO { ..., EPSILON };  (solo válido en AFN)";
+                    if (reportedErrors.add(msg))
+                        errors.add(new ErrorLSSL(1, msg, locTok));
+                } else if (!"EPSILON".equals(sym) && !alphabetSymbols.contains(sym)) {
+                    String msg = "[SemError 008] El símbolo '" + sym + "' se usa en una transición pero no pertenece al alfabeto. | ✏ Agrégalo al alfabeto: ALFABETO { ..., '" + sym + "' };";
+                    if (reportedErrors.add(msg))
+                        errors.add(new ErrorLSSL(1, msg, locTok));
+                }
+            }
+            return 1;
+        }
+        int count = 0;
+        for (ASTNode child : node.children)
+            count += validateTransitions(child, declaredStates, alphabetSymbols, hasEpsilon, counter, reportedErrors);
+        return count;
+    }
+
+    /** B1: Verifica que el AFD no tenga múltiples transiciones desde el mismo estado con el mismo símbolo. */
+    private void checkDeterminism(ASTNode root) {
+        HashMap<String, Set<String>> seenSymbols = new HashMap<>();
+        HashMap<String, Integer> counter = new HashMap<>();
+        checkDeterminismNode(root, seenSymbols, counter);
+    }
+
+    private void checkDeterminismNode(ASTNode node, HashMap<String, Set<String>> seenSymbols,
+                                      HashMap<String, Integer> counter) {
+        if (node == null) return;
+        if ("Transition".equals(node.label)) {
+            String origin = null, destination = null;
+            Set<String> usedSymbols = new HashSet<>();
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label))                   origin      = child.value;
+                else if ("To".equals(child.label))                destination = child.value;
+                else if ("TransitionSymbols".equals(child.label)) gatherSymbols(child, usedSymbols);
+            }
+            Token locTok = findTransitionToken(origin, destination, counter);
+            if (origin != null) {
+                Set<String> existing = seenSymbols.computeIfAbsent(origin, k -> new HashSet<>());
+                for (String sym : usedSymbols) {
+                    if (!existing.add(sym))
+                        errors.add(new ErrorLSSL(1,
+                            "[SemError 010] AFD no determinista: el estado '" + origin + "' tiene más de una transición con el símbolo '" + sym + "'. | ✏ En un AFD cada par (estado, símbolo) debe tener exactamente un estado destino.",
+                            locTok));
+                }
+            }
+            return;
+        }
+        for (ASTNode child : node.children)
+            checkDeterminismNode(child, seenSymbols, counter);
+    }
+
+    /** B2: Detecta estados declarados con ESTADO que nunca aparecen en ninguna transición. */
+    private void checkUnusedStates(ASTNode root, Set<String> initialStates, Set<String> finalStates) {
+        Set<String> usedInTransitions = new HashSet<>();
+        collectTransitionStates(root, usedInTransitions);
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            if (!"State_Declared".equals(sym.tipo)) continue;
+            String state = sym.nombre;
+            if (!usedInTransitions.contains(state)
+                    && !initialStates.contains(state)
+                    && !finalStates.contains(state)) {
+                Token locTok = new Token(state, "IDENTIFICADOR", sym.linea, sym.columna);
+                errors.add(new ErrorLSSL(1,
+                    "[SemError 011] El estado '" + state + "' está declarado pero no se usa en ninguna transición. | ✏ ¿Olvidaste agregar transiciones desde o hacia '" + state + "'?",
+                    locTok));
+            }
         }
     }
 
-    private void printConsole() {
-        int sizeErrors = errors.size();
-        if (sizeErrors > 0) {
-            Functions.sortErrorsByLineAndColumn(errors);
-            String strErrors = "\n";
-            for (ErrorLSSL error : errors) {
-                String strError = String.valueOf(error);
-                strErrors += strError + "\n";
+    private void collectTransitionStates(ASTNode node, Set<String> states) {
+        if (node == null) return;
+        if ("Transition".equals(node.label)) {
+            for (ASTNode child : node.children) {
+                if (("From".equals(child.label) || "To".equals(child.label)) && child.value != null)
+                    states.add(child.value);
             }
-            panel_Salida.setText("Compilación Terminada...\n" + strErrors + "\nLa compilación terminó con errores");
-        } else {
-            panel_Salida.setText("Compilación Terminada...");
+            return;
+        }
+        for (ASTNode child : node.children)
+            collectTransitionStates(child, states);
+    }
+
+    /**
+     * Detecta transiciones donde falta el ';' final y que el modo pánico del parser
+     * consumió silenciosamente. Busca CORCHETE_DER no seguido de PUNTO_Y_COMA y agrega
+     * SinError 019 por cada línea afectada que no tenga ya un error registrado.
+     */
+    private void detectMissingTransitionSemicolons() {
+        Set<Integer> reportedLines = new HashSet<>();
+        for (ErrorLSSL e : errors) {
+            if (e.getLine() > 0) reportedLines.add(e.getLine());
+        }
+        for (int i = 0; i < tokens.size() - 1; i++) {
+            Token tk = tokens.get(i);
+            Token nx = tokens.get(i + 1);
+            if (!"CORCHETE_DER".equals(tk.getLexicalComp())) continue;
+            if ("PUNTO_Y_COMA".equals(nx.getLexicalComp())) continue;
+            // tk.getLine() is off by -1 from the editor's displayed line number
+            // (consistent with the rest of the system: syntax_error compensates by
+            //  using the next token, which is also -1 but from the following line).
+            // We apply +1 here to report the correct editor line.
+            int errorLine = tk.getLine() + 1;
+            if (reportedLines.contains(errorLine)) continue;
+            Token errTok = new Token(tk.getLexeme(), tk.getLexicalComp(), errorLine, tk.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 019] Falta ';' al final de la transición. | ✏ La transición debe terminar con ';': q0 -> q1 ['a'];",
+                errTok));
+            reportedLines.add(errorLine);
         }
     }
+
+    /**
+     * Busca la N-ésima ocurrencia de origin->destination en listaSimbolosGlobal.
+     * El contador asegura que cada nodo Transition del AST recibe su token correcto
+     * incluso cuando varias transiciones comparten el mismo par origen-destino (AFN).
+     */
+    private Token findTransitionToken(String origin, String destination,
+                                      HashMap<String, Integer> counter) {
+        if (origin == null) return null;
+        String key = origin + "->" + (destination != null ? destination : "");
+        int idx = counter.getOrDefault(key, 0);
+        counter.put(key, idx + 1);
+        int found = 0;
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            if ("Transition_Used".equals(sym.tipo) && key.equals(sym.nombre)) {
+                if (found == idx)
+                    return new Token(origin, "IDENTIFICADOR", sym.linea, sym.columna);
+                found++;
+            }
+        }
+        // Fallback: buscar solo por estado origen
+        for (SimboloDSL sym : listaSimbolosGlobal) {
+            if ("Transition_Used".equals(sym.tipo) && sym.nombre.startsWith(origin + "->"))
+                return new Token(origin, "IDENTIFICADOR", sym.linea, sym.columna);
+        }
+        return null;
+    }
+
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -788,17 +760,7 @@ public class Compilador extends javax.swing.JFrame {
         errors.clear();
         tokens.clear();
 
-        // Limpiamos la tabla de símbolos de compilaciones anteriores
-        if (listaSimbolos != null) {
-            listaSimbolos.clear();
-        } else {
-            listaSimbolos = new java.util.ArrayList<>();
-        }
-        if (listaSimbolosGlobal != null) {
-            listaSimbolosGlobal.clear();
-        } else {
-            listaSimbolosGlobal = new java.util.ArrayList<>();
-        }
+        listaSimbolosGlobal.clear();
 
         codeHasBeenCompiled = false;
 
@@ -813,12 +775,15 @@ public class Compilador extends javax.swing.JFrame {
             // ==========================================
             // PASO 1: ANÁLISIS LÉXICO (Llenar la tabla)
             // ==========================================
+            ArrayList<java_cup.runtime.Symbol> symbolList = new ArrayList<>();
             Lexer lexerTabla = new Lexer(new java.io.StringReader(input));
             while (true) {
                 java_cup.runtime.Symbol symbol = lexerTabla.next_token();
                 if (symbol == null || symbol.sym == sym.EOF) {
+                    symbolList.add(new java_cup.runtime.Symbol(sym.EOF));
                     break;
                 }
+                symbolList.add(symbol);
 
                 // Agregamos el token a la lista y a la tabla visual
                 if (symbol.value instanceof Token) {
@@ -832,23 +797,35 @@ public class Compilador extends javax.swing.JFrame {
                     };
                     Functions.addRowDataInTable(tbl_Token, data);
 
-                    // Si el token es un error léxico no reconocido (configurado en tu .flex)
                     if (token.getLexicalComp().equals("ERROR_LEXICO")) {
-                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter no reconocido", token));
+                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter '" + token.getLexeme() + "' no reconocido", token));
+                    } else if (token.getLexicalComp().equals("ERROR_COLOR")) {
+                        errors.add(new ErrorLSSL(1,
+                            "[LexError 002] Color '" + token.getLexeme() + "' no es un color válido para FONDO. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+                            token));
                     }
                 }
             }
 
             // ==========================================
-            // PASO 2: ANÁLISIS SINTÁCTICO
+            // PASO 2: ANÁLISIS SINTÁCTICO (replay del mismo escaneo)
             // ==========================================
-            Lexer lexerParser = new Lexer(new java.io.StringReader(input));
-            Parser parser = new Parser(lexerParser);
+            java_cup.runtime.Scanner replayScanner = new java_cup.runtime.Scanner() {
+                private int pos = 0;
+                @Override
+                public java_cup.runtime.Symbol next_token() {
+                    return pos < symbolList.size()
+                            ? symbolList.get(pos++)
+                            : new java_cup.runtime.Symbol(sym.EOF);
+                }
+            };
+            Parser parser = new Parser(replayScanner);
 
+            java_cup.runtime.Symbol parseResult = null;
             try {
-                parser.parse();
+                parseResult = parser.parse();
             } catch (Exception ex) {
-                // ... ignoramos el error grave aquí para poder leer los errores recuperados
+                System.err.println("Error inesperado durante el análisis sintáctico: " + ex.getMessage());
             }
 
             // Recolectamos los errores sintácticos
@@ -856,25 +833,33 @@ public class Compilador extends javax.swing.JFrame {
                 errors.addAll(parser.errors);
             }
 
+            // Post-chequeo: detectar transiciones con ';' faltante que el parser
+            // consumió silenciosamente durante la recuperación de errores.
+            detectMissingTransitionSemicolons();
+            Functions.sortErrorsByLineAndColumn(errors);
+
             // ========================================================
             // 🌟 ESTA ES LA PARTE QUE LLENA LA TABLA DE SÍMBOLOS
             // ========================================================
             if (parser.symbols != null && !parser.symbols.isEmpty()) {
                 listaSimbolosGlobal.addAll(parser.symbols);
-                System.out.println("Símbolos extraídos del parser: " + parser.symbols.size());
-            } else {
-                System.out.println("El parser no guardó ningún símbolo en esta ejecución.");
             }
 
             // ========================================================
             // 🌟 VALIDACIÓN SEMÁNTICA BÁSICA
             // ========================================================
-            if (parser.errors == null || parser.errors.isEmpty()) {
-                semanticAnalysis(input);
+            // E6: run semantic analysis unless there is an unrecoverable syntax error
+            // (SinError 011 means the AST is too incomplete to trust)
+            boolean hasUnrecoveredError = parser.errors != null && parser.errors.stream()
+                    .anyMatch(e -> e.getDescription() != null && e.getDescription().contains("SinError 011"));
+            if (!hasUnrecoveredError) {
+                ASTNode astRoot = (parseResult != null && parseResult.value instanceof ASTNode)
+                        ? (ASTNode) parseResult.value : null;
+                semanticAnalysis(astRoot);
             }
 
         } catch (Exception ex) {
-            System.out.println("Error general en la compilación: " + ex.getMessage());
+            System.err.println("Error general en la compilación: " + ex.getMessage());
         }
 
         // ==========================================
@@ -883,7 +868,7 @@ public class Compilador extends javax.swing.JFrame {
         if (errors.isEmpty()) {
             // Si no hay errores, mensaje de éxito
             panel_Salida.setForeground(new Color(0, 150, 0)); // Verde
-            panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos ni sintácticos.");
+            panel_Salida.setText("✅ Compilación exitosa.\nNo se encontraron errores léxicos, sintácticos ni semánticos.");
         } else {
             panel_Salida.setForeground(Color.RED);
             StringBuilder consola = new StringBuilder();
@@ -976,10 +961,9 @@ public class Compilador extends javax.swing.JFrame {
             Parser parser = new Parser(lexer);
             java_cup.runtime.Symbol result = parser.parse();
 
-            errors.clear();
-            errors.addAll(parser.errors);
+            ArrayList<ErrorLSSL> treeErrors = new ArrayList<>(parser.errors);
 
-            if (!errors.isEmpty()) {
+            if (!treeErrors.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Corrige los errores sintácticos antes de ver el árbol.");
                 return;
             }
@@ -1406,7 +1390,7 @@ public class Compilador extends javax.swing.JFrame {
             try {
                 UIManager.setLookAndFeel(new FlatIntelliJLaf());
             } catch (UnsupportedLookAndFeelException ex) {
-                System.out.println("LookAndFeel no soportado: " + ex);
+                System.err.println("LookAndFeel no soportado: " + ex);
             }
             new Compilador().setVisible(true);
         });

@@ -209,6 +209,11 @@ public class Parser extends java_cup.runtime.lr_parser {
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
         Token ref = (t != null) ? t : tokenAnterior;
+        // E1: suppress cascading errors — if the last reported error is on the same line, skip
+        if (ref != null && !errors.isEmpty()) {
+            int lastLine = errors.get(errors.size() - 1).getLine();
+            if (lastLine > 0 && lastLine == ref.getLine()) return;
+        }
         String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
@@ -285,6 +290,12 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
+        // E3: suppress if syntax_error already reported an error on this same line
+        if (!errors.isEmpty()) {
+            int lastLine = errors.get(errors.size() - 1).getLine();
+            int thisLine = (t != null) ? t.getLine() : -1;
+            if (lastLine > 0 && lastLine == thisLine) return;
+        }
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String contexto;
@@ -374,7 +385,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 100] Estructura de programa mal formada", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 100] Estructura de programa mal formada. | ✏ Verifica que el programa tenga: TIPO, ALFABETO, estados, transiciones y FINAL.", null));
         RESULT = new ASTNode("Error_Program");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -430,7 +441,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 101] Falta TIPO y ALFABETO al inicio del programa", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 101] Falta TIPO y ALFABETO al inicio del programa. | ✏ El programa debe comenzar con: TIPO AFD;  ALFABETO { 'a', 'b' };", null));
         RESULT = new ASTNode("Error_Config");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -474,7 +485,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		 
-        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -502,7 +512,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 013] ALFABETO debe ir: ALFABETO { 'a', 'b', ... };", tokenAnterior));
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AlphabetDef",6, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -702,7 +711,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -730,7 +738,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato: ESTADO <nombre>;", tokenAnterior));
         RESULT = new ASTNode("StateDecl", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -835,9 +842,20 @@ class CUP$Parser$actions {
 		int destinoleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
 		int destinoright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
 		Object destino = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-		
-        Token tOri = (Token)origen;
-        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+
+        // E5: replace the generic SinError 010 on this line with a transition-specific message
+        Token tOri = (origen instanceof Token) ? (Token)origen : null;
+        Token tDes = (destino instanceof Token) ? (Token)destino : null;
+        if (tOri != null && !parser.errors.isEmpty()) {
+            int lastLine = parser.errors.get(parser.errors.size() - 1).getLine();
+            if (lastLine > 0 && lastLine == tOri.getLine())
+                parser.errors.remove(parser.errors.size() - 1);
+        }
+        String oriName = tOri != null ? tOri.getLexeme() : "?";
+        String desName = tDes != null ? tDes.getLexeme() : "?";
+        parser.errors.add(new ErrorLSSL(1,
+            "[SinError 014] Transición mal formada: " + oriName + " -> " + desName + " [símbolo];  | ✏ Correcto: " + oriName + " -> " + desName + " ['a'];",
+            tOri));
         RESULT = new ASTNode("Transition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Transition",7, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -899,7 +917,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 103] Falta FINAL <estado> [, <estado>, ...];", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 103] Falta la declaración de estados finales. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
         RESULT = new ASTNode("Acceptance_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AcceptanceSection",4, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -927,7 +945,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("FinalDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -993,9 +1010,6 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1,
-            "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
-            tokenAnterior));
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",11, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
