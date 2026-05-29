@@ -233,9 +233,9 @@ public class Functions {
             Token token1 = error1.getToken();
             Token token2 = error2.getToken();
 
-            if (token1 == null || token2 == null) {
-                return 0;
-            }
+            if (token1 == null && token2 == null) return 0;
+            if (token1 == null) return 1;
+            if (token2 == null) return -1;
 
             // Primero por línea
             if (token1.getLine() != token2.getLine()) {

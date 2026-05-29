@@ -11,7 +11,9 @@
       "Bash(copy /Y sym.java src\\\\sym.java)",
       "Bash(del Parser.java sym.java)",
       "Bash(java -jar jflex-full-1.9.1.jar --outdir src src/LexerColor.flex)",
-      "Bash(git commit -m 'Agrega token COLOR al lexer para validar colores de FONDO *)"
+      "Bash(git commit -m 'Agrega token COLOR al lexer para validar colores de FONDO *)",
+      "Bash(ant -q compile)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }
