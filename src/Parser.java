@@ -296,6 +296,11 @@ public class Parser extends java_cup.runtime.lr_parser {
             int thisLine = (t != null) ? t.getLine() : -1;
             if (lastLine > 0 && lastLine == thisLine) return;
         }
+        // Suppress if other syntax errors already explain the problem.
+        // SinError 011 at EOF only adds value when no specific error was reported.
+        boolean hasSinError = errors.stream()
+                .anyMatch(e -> e.getDescription() != null && e.getDescription().contains("SinError"));
+        if (hasSinError) return;
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String contexto;

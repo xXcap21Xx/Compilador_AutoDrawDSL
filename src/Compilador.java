@@ -872,8 +872,6 @@ public class Compilador extends javax.swing.JFrame {
         } else {
             panel_Salida.setForeground(Color.RED);
             StringBuilder consola = new StringBuilder();
-            String codigoCompleto = panel_Codigo.getText();
-            String[] lineasDeCodigo = codigoCompleto.split("\\r?\\n");
 
             // Conteo por categoría
             long numLex = errors.stream().filter(e -> e.getDescription().contains("LexError")).count();
@@ -905,10 +903,21 @@ public class Compilador extends javax.swing.JFrame {
                     sugerencia  = desc.substring(sepIdx + 5);
                 }
 
-                // Línea del código fuente
+                // Línea del código fuente (misma corrección: índice lineNum-2)
                 String fragmento = "";
-                if (numLinea > 0 && numLinea <= lineasDeCodigo.length) {
-                    fragmento = lineasDeCodigo[numLinea - 1].trim();
+                int elemIdx = numLinea - 2;
+                if (elemIdx >= 0) {
+                    try {
+                        javax.swing.text.Element docRoot = panel_Codigo.getDocument().getDefaultRootElement();
+                        if (elemIdx < docRoot.getElementCount()) {
+                            javax.swing.text.Element el = docRoot.getElement(elemIdx);
+                            fragmento = panel_Codigo.getDocument()
+                                .getText(el.getStartOffset(), el.getEndOffset() - el.getStartOffset())
+                                .trim();
+                        }
+                    } catch (javax.swing.text.BadLocationException ex) {
+                        // ignorar
+                    }
                 }
 
                 // Formato en consola
@@ -993,28 +1002,25 @@ public class Compilador extends javax.swing.JFrame {
         hl.removeAllHighlights();
         if (errors.isEmpty()) return;
 
-        String text = panel_Codigo.getText();
-        // Calcular posición de inicio de cada línea
-        String[] lines = text.split("\n", -1);
-        int[] lineStart = new int[lines.length + 1];
-        lineStart[0] = 0;
-        for (int i = 0; i < lines.length; i++) {
-            lineStart[i + 1] = lineStart[i] + lines[i].length() + 1; // +1 por \n
-        }
-
+        javax.swing.text.Element root = panel_Codigo.getDocument().getDefaultRootElement();
+        int totalLines = root.getElementCount();
         javax.swing.text.Highlighter.HighlightPainter painter =
             new javax.swing.text.DefaultHighlighter.DefaultHighlightPainter(new Color(255, 200, 200));
 
         for (ErrorLSSL error : errors) {
             int lineNum = error.getLine();
-            if (lineNum > 0 && lineNum <= lines.length) {
+            // getElement(N) apunta al contenido de la línea visible N+2 en este documento,
+            // por lo que se usa lineNum-2 para obtener el párrafo correcto.
+            int elemIdx = lineNum - 2;
+            if (elemIdx >= 0 && elemIdx < totalLines) {
                 try {
-                    int start = lineStart[lineNum - 1];
-                    int end   = lineStart[lineNum] - 1; // antes del \n
+                    javax.swing.text.Element lineElem = root.getElement(elemIdx);
+                    int start = lineElem.getStartOffset();
+                    int end   = lineElem.getEndOffset() - 1;
                     if (end < start) end = start;
                     hl.addHighlight(start, end, painter);
                 } catch (javax.swing.text.BadLocationException ex) {
-                    // sin acción — la línea puede haber cambiado
+                    // ignorar — la línea puede haber cambiado
                 }
             }
         }
