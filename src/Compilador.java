@@ -312,7 +312,14 @@ public class Compilador extends javax.swing.JFrame {
         if (isAFD && transitionCount > 0)
             checkDeterminism(root);
 
-        checkUnusedStates(root, initialStates, finalStates);
+        // SemError 011 requiere un AST completo. Si hay errores sintácticos, el modo
+        // pánico del parser pudo haber descartado transiciones, haciendo que estados
+        // realmente usados aparezcan como "no usados" en el AST. Se omite en ese caso.
+        boolean hasSyntaxErrors = errors.stream().anyMatch(
+                e -> e.getDescription() != null && e.getDescription().contains("SinError"));
+        if (!hasSyntaxErrors) {
+            checkUnusedStates(root, initialStates, finalStates);
+        }
     }
 
     /** Recorre el AST hasta AlphabetDefinition y recoge sus Symbol hijos. */
@@ -445,31 +452,172 @@ public class Compilador extends javax.swing.JFrame {
 
     /**
      * Detecta transiciones donde falta el ';' final y que el modo pánico del parser
-     * consumió silenciosamente. Busca CORCHETE_DER no seguido de PUNTO_Y_COMA y agrega
-     * SinError 019 por cada línea afectada que no tenga ya un error registrado.
+     * consumió silenciosamente. Para cada CORCHETE_DER que cierra una transición válida
+     * y no va seguido de PUNTO_Y_COMA, reconstruye la transición completa y agrega
+     * SinError 019 con el texto real de la línea afectada.
+     *
+     * Nota: tk.getLine() tiene un desfase de -1 respecto al número de línea visible
+     * en el editor; se compensa con +1 al crear el token de error.
      */
     private void detectMissingTransitionSemicolons() {
         Set<Integer> reportedLines = new HashSet<>();
         for (ErrorLSSL e : errors) {
             if (e.getLine() > 0) reportedLines.add(e.getLine());
         }
-        for (int i = 0; i < tokens.size() - 1; i++) {
+        for (int i = 0; i < tokens.size(); i++) {
             Token tk = tokens.get(i);
-            Token nx = tokens.get(i + 1);
             if (!"CORCHETE_DER".equals(tk.getLexicalComp())) continue;
-            if ("PUNTO_Y_COMA".equals(nx.getLexicalComp())) continue;
-            // tk.getLine() is off by -1 from the editor's displayed line number
-            // (consistent with the rest of the system: syntax_error compensates by
-            //  using the next token, which is also -1 but from the following line).
-            // We apply +1 here to report the correct editor line.
+
+            // Verificar que este ] cierra realmente una transición
+            if (!isTransitionClosingBracket(i)) continue;
+
+            // Correcto si va seguido de ;
+            boolean followedBySemicolon = (i + 1 < tokens.size())
+                    && "PUNTO_Y_COMA".equals(tokens.get(i + 1).getLexicalComp());
+            if (followedBySemicolon) continue;
+
             int errorLine = tk.getLine() + 1;
             if (reportedLines.contains(errorLine)) continue;
-            Token errTok = new Token(tk.getLexeme(), tk.getLexicalComp(), errorLine, tk.getColumn());
+
+            String label = reconstructTransitionLabel(i);
+            String suggestion = label.isEmpty() ? "q0 -> q1 ['a'];" : label + ";";
+
+            Token errTok = new Token("]", "CORCHETE_DER", errorLine, tk.getColumn());
             errors.add(new ErrorLSSL(1,
-                "[SinError 019] Falta ';' al final de la transición. | ✏ La transición debe terminar con ';': q0 -> q1 ['a'];",
+                "[SinError 019] Falta ';' al final de la transición. | ✏ Correcto: " + suggestion,
                 errTok));
             reportedLines.add(errorLine);
         }
+    }
+
+    /**
+     * Detecta transiciones donde falta el corchete de cierre ']'.
+     * Busca cada '[' de transición (precedido por Ident FLECHA Ident) y verifica
+     * que haya un ']' correspondiente. Si no lo hay, reporta SinError 020.
+     * Debe llamarse ANTES de detectMissingTransitionSemicolons() para que las
+     * líneas afectadas queden en reportedLines y no se genere también SinError 019.
+     */
+    private void detectMissingTransitionClosingBracket() {
+        Set<Integer> reportedLines = new HashSet<>();
+        for (ErrorLSSL e : errors) {
+            if (e.getLine() > 0) reportedLines.add(e.getLine());
+        }
+
+        for (int i = 3; i < tokens.size(); i++) {
+            Token openBracket = tokens.get(i);
+            if (!"CORCHETE_IZQ".equals(openBracket.getLexicalComp())) continue;
+
+            // Debe ser una transición: Ident FLECHA Ident [
+            if (!isIdentToken(tokens.get(i - 1))
+                    || !"FLECHA".equals(tokens.get(i - 2).getLexicalComp())
+                    || !isIdentToken(tokens.get(i - 3))) continue;
+
+            // Escanear hacia adelante buscando el ]
+            boolean foundClose = false;
+            int j = i + 1;
+            while (j < tokens.size()) {
+                String comp = tokens.get(j).getLexicalComp();
+                if ("CORCHETE_DER".equals(comp)) { foundClose = true; break; }
+                // Tokens que no pueden estar dentro de [...] → salimos sin ]
+                if ("FLECHA".equals(comp) || "PUNTO_Y_COMA".equals(comp)
+                        || "LLAVE_IZQ".equals(comp) || "LLAVE_DER".equals(comp)
+                        || "TIPO".equals(comp) || "ALFABETO".equals(comp)
+                        || "INICIO".equals(comp) || "FINAL".equals(comp)
+                        || "ESTADO".equals(comp) || "FONDO".equals(comp)
+                        || "AFD".equals(comp)    || "AFN".equals(comp)) break;
+                j++;
+            }
+
+            if (foundClose) continue;
+
+            // ] faltante: usar la línea del '[' como referencia de error
+            int errorLine = openBracket.getLine() + 1;
+            if (reportedLines.contains(errorLine)) continue;
+
+            // Reconstruir la etiqueta de la transición
+            Token origin = tokens.get(i - 3);
+            Token dest   = tokens.get(i - 1);
+            ArrayList<String> syms = new ArrayList<>();
+            for (int k = i + 1; k < j; k++) {
+                Token st = tokens.get(k);
+                if ("EPSILON".equals(st.getLexicalComp())) {
+                    syms.add("EPSILON");
+                } else if ("COMILLA_SIMPLE".equals(st.getLexicalComp())
+                        && k + 2 < tokens.size()
+                        && isIdentToken(tokens.get(k + 1))
+                        && "COMILLA_SIMPLE".equals(tokens.get(k + 2).getLexicalComp())) {
+                    syms.add("'" + tokens.get(k + 1).getLexeme() + "'");
+                    k += 2;
+                }
+            }
+            String symStr = syms.isEmpty() ? "..." : String.join(", ", syms);
+            String suggestion = origin.getLexeme() + " -> " + dest.getLexeme()
+                                + " [" + symStr + "];";
+
+            Token errTok = new Token("]", "CORCHETE_DER", errorLine, openBracket.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 020] Falta el corchete de cierre ']' en la transición. | ✏ Correcto: " + suggestion,
+                errTok));
+            reportedLines.add(errorLine);
+        }
+    }
+
+    /** Verifica que el CORCHETE_DER en la posición dada cierra una transición
+     *  (existe un CORCHETE_IZQ precedido del patrón Ident FLECHA Ident). */
+    private boolean isTransitionClosingBracket(int closeBracketIdx) {
+        for (int i = closeBracketIdx - 1; i >= 0; i--) {
+            String lc = tokens.get(i).getLexicalComp();
+            if ("CORCHETE_IZQ".equals(lc)) {
+                return i >= 3
+                    && "FLECHA".equals(tokens.get(i - 2).getLexicalComp())
+                    && isIdentToken(tokens.get(i - 1))
+                    && isIdentToken(tokens.get(i - 3));
+            }
+            // Si cruzamos otro ] o ; antes de encontrar [ no es cierre de transición
+            if ("CORCHETE_DER".equals(lc) || "PUNTO_Y_COMA".equals(lc)) break;
+        }
+        return false;
+    }
+
+    /** Reconstruye la etiqueta de la transición (ej: "q0 -> q1 ['a', 'b']")
+     *  leyendo hacia atrás desde el CORCHETE_DER indicado. */
+    private String reconstructTransitionLabel(int closeBracketIdx) {
+        int openIdx = -1;
+        for (int i = closeBracketIdx - 1; i >= 0; i--) {
+            String lc = tokens.get(i).getLexicalComp();
+            if ("CORCHETE_IZQ".equals(lc)) { openIdx = i; break; }
+            if ("CORCHETE_DER".equals(lc) || "PUNTO_Y_COMA".equals(lc)) break;
+        }
+        if (openIdx < 3) return "";
+
+        Token dest   = tokens.get(openIdx - 1);
+        Token arrow  = tokens.get(openIdx - 2);
+        Token origin = tokens.get(openIdx - 3);
+        if (!"FLECHA".equals(arrow.getLexicalComp())) return "";
+        if (!isIdentToken(dest) || !isIdentToken(origin)) return "";
+
+        // Recolectar los símbolos entre [ y ]
+        ArrayList<String> syms = new ArrayList<>();
+        for (int i = openIdx + 1; i < closeBracketIdx; i++) {
+            Token t = tokens.get(i);
+            if ("EPSILON".equals(t.getLexicalComp())) {
+                syms.add("EPSILON");
+            } else if ("COMILLA_SIMPLE".equals(t.getLexicalComp())
+                    && i + 2 < closeBracketIdx
+                    && isIdentToken(tokens.get(i + 1))
+                    && "COMILLA_SIMPLE".equals(tokens.get(i + 2).getLexicalComp())) {
+                syms.add("'" + tokens.get(i + 1).getLexeme() + "'");
+                i += 2;
+            }
+        }
+
+        String symStr = syms.isEmpty() ? "..." : String.join(", ", syms);
+        return origin.getLexeme() + " -> " + dest.getLexeme() + " [" + symStr + "]";
+    }
+
+    private boolean isIdentToken(Token t) {
+        String lc = t.getLexicalComp();
+        return "IDENTIFICADOR".equals(lc) || "COLOR".equals(lc);
     }
 
     /**
@@ -833,8 +981,10 @@ public class Compilador extends javax.swing.JFrame {
                 errors.addAll(parser.errors);
             }
 
-            // Post-chequeo: detectar transiciones con ';' faltante que el parser
-            // consumió silenciosamente durante la recuperación de errores.
+            // Post-chequeo: detectar ] faltante primero (más grave),
+            // luego ; faltante. El orden importa: el primero "reclama" la línea
+            // en reportedLines y el segundo no duplica sobre ella.
+            detectMissingTransitionClosingBracket();
             detectMissingTransitionSemicolons();
             Functions.sortErrorsByLineAndColumn(errors);
 

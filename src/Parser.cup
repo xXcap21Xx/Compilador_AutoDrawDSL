@@ -17,12 +17,38 @@ parser code {:
     private String automatonType = null;
     private String initialState = null;
 
+    // Transition context tracked token-by-token for error message reconstruction
+    private boolean expectingTransitionDest = false;
+    public boolean inTransitionBrackets = false;
+    public String pendingTransitionOrigin = null;
+    public String pendingTransitionDest = null;
+    public java.util.List<String> pendingTransitionSymbols = new java.util.ArrayList<>();
+
     @Override
     public Symbol scan() throws java.lang.Exception {
         Symbol sym = super.scan();
         if (sym != null && sym.value instanceof Token) {
             tokenAnterior = tokenActual;
             tokenActual = (Token) sym.value;
+            String comp = tokenActual.getLexicalComp();
+            if ("FLECHA".equals(comp)) {
+                pendingTransitionOrigin = (tokenAnterior != null) ? tokenAnterior.getLexeme() : null;
+                pendingTransitionDest = null;
+                pendingTransitionSymbols.clear();
+                expectingTransitionDest = true;
+            } else if (expectingTransitionDest
+                    && ("IDENTIFICADOR".equals(comp) || "COLOR".equals(comp))) {
+                pendingTransitionDest = tokenActual.getLexeme();
+                expectingTransitionDest = false;
+            } else if ("CORCHETE_IZQ".equals(comp)) {
+                pendingTransitionSymbols.clear();
+                inTransitionBrackets = true;
+            } else if ("CORCHETE_DER".equals(comp)) {
+                inTransitionBrackets = false;
+            } else if ("LLAVE_IZQ".equals(comp)) {
+                inTransitionBrackets = false;
+                pendingTransitionSymbols.clear();
+            }
         }
         return sym;
     }
@@ -73,13 +99,33 @@ parser code {:
                         + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
             case "CORCHETE_DER":
                 mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+                        + lexActual + "'. | ✏ Correcto: "
+                        + (pendingTransitionOrigin != null && pendingTransitionDest != null
+                           && !pendingTransitionSymbols.isEmpty()
+                            ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                              + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                            : "q0 -> q1 ['símbolo'];");
+                break;
             case "COMA":
                 mensaje = "[SinError 010] Después de ',' se esperaba otro elemento, pero se encontró '"
                         + lexActual + "'. | ✏ Ej: ALFABETO { 'a', 'b' };  ó  FINAL q1, q2;"; break;
             case "COMILLA_SIMPLE":
-                mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'"; break;
+                // Closing ' of a symbol; if next token starts a new statement it means ] was forgotten
+                if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)
+                        || "INICIO".equals(compActual) || "ESTADO".equals(compActual)
+                        || "FINAL".equals(compActual)  || "TIPO".equals(compActual)
+                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)) {
+                    String missClose = (pendingTransitionOrigin != null && pendingTransitionDest != null
+                                        && !pendingTransitionSymbols.isEmpty())
+                        ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                          + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                        : "q0 -> q1 ['símbolo'];";
+                    mensaje = "[SinError 010] Falta el corchete de cierre ']' después del símbolo. | ✏ Correcto: " + missClose;
+                } else {
+                    mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'";
+                }
+                break;
             case "IDENTIFICADOR": case "COLOR":
                 if ("FLECHA".equals(compActual)) {
                     mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
@@ -246,11 +292,15 @@ SymbolVal ::= COMILLA_SIMPLE Ident:id COMILLA_SIMPLE
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("'" + t.getLexeme() + "'");
         RESULT = new ASTNode("Symbol", t.getLexeme());
     :}
     | EPSILON:e
     {:
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("EPSILON");
         RESULT = new ASTNode("Symbol", "EPSILON");
     :}
     ;
@@ -356,7 +406,14 @@ Transition ::= Ident:origen FLECHA Ident:destino CORCHETE_IZQ TransitionSymbolLi
     | Ident:origen FLECHA Ident:destino error PUNTO_Y_COMA
     {:
         Token tOri = (Token)origen;
-        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        int orLine = tOri.getLine();
+        // Suppress if syntax_error already reported a problem on a nearby line
+        // (this production fires as cascade recovery of the same broken transition)
+        boolean alreadyReported = !parser.errors.isEmpty() &&
+            Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
+        if (!alreadyReported) {
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        }
         RESULT = new ASTNode("Transition", "ERROR");
     :}
     ;

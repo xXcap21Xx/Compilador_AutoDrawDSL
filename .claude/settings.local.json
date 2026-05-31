@@ -13,7 +13,14 @@
       "Bash(java -jar jflex-full-1.9.1.jar --outdir src src/LexerColor.flex)",
       "Bash(git commit -m 'Agrega token COLOR al lexer para validar colores de FONDO *)",
       "Bash(ant -q compile)",
-      "PowerShell(Get-Command *)"
+      "PowerShell(Get-Command *)",
+      "Bash(java -jar java-cup-11b.jar -parser Parser -symbols sym -destdir src src/Parser.cup)",
+      "Bash(ant compile *)",
+      "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar\" -d build/classes src/Parser.java src/Compilador.java)",
+      "Bash(where ant *)",
+      "Bash(dir \"C:\\\\Program Files\\\\NetBeans*\\\\ant\\\\bin\\\\ant.bat\")",
+      "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/SimboloDSL.java src/sym.java src/Parser.java)",
+      "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/Compilador.java)"
     ]
   }
 }

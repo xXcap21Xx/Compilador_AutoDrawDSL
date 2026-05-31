@@ -20,7 +20,7 @@ public class sym {
   public static final int EPSILON = 7;
   public static final int CORCHETE_DER = 13;
   public static final int FINAL = 5;
-  public static final int ERROR = 1;
+  public static final int error = 1;
   public static final int IDENTIFICADOR = 19;
   public static final int LLAVE_IZQ = 14;
   public static final int LLAVE_DER = 15;

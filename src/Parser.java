@@ -192,12 +192,38 @@ public class Parser extends java_cup.runtime.lr_parser {
     private String automatonType = null;
     private String initialState = null;
 
+    // Transition context tracked token-by-token for error message reconstruction
+    private boolean expectingTransitionDest = false;
+    public boolean inTransitionBrackets = false;
+    public String pendingTransitionOrigin = null;
+    public String pendingTransitionDest = null;
+    public java.util.List<String> pendingTransitionSymbols = new java.util.ArrayList<>();
+
     @Override
     public Symbol scan() throws java.lang.Exception {
         Symbol sym = super.scan();
         if (sym != null && sym.value instanceof Token) {
             tokenAnterior = tokenActual;
             tokenActual = (Token) sym.value;
+            String comp = tokenActual.getLexicalComp();
+            if ("FLECHA".equals(comp)) {
+                pendingTransitionOrigin = (tokenAnterior != null) ? tokenAnterior.getLexeme() : null;
+                pendingTransitionDest = null;
+                pendingTransitionSymbols.clear();
+                expectingTransitionDest = true;
+            } else if (expectingTransitionDest
+                    && ("IDENTIFICADOR".equals(comp) || "COLOR".equals(comp))) {
+                pendingTransitionDest = tokenActual.getLexeme();
+                expectingTransitionDest = false;
+            } else if ("CORCHETE_IZQ".equals(comp)) {
+                pendingTransitionSymbols.clear();
+                inTransitionBrackets = true;
+            } else if ("CORCHETE_DER".equals(comp)) {
+                inTransitionBrackets = false;
+            } else if ("LLAVE_IZQ".equals(comp)) {
+                inTransitionBrackets = false;
+                pendingTransitionSymbols.clear();
+            }
         }
         return sym;
     }
@@ -209,11 +235,6 @@ public class Parser extends java_cup.runtime.lr_parser {
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
         Token ref = (t != null) ? t : tokenAnterior;
-        // E1: suppress cascading errors — if the last reported error is on the same line, skip
-        if (ref != null && !errors.isEmpty()) {
-            int lastLine = errors.get(errors.size() - 1).getLine();
-            if (lastLine > 0 && lastLine == ref.getLine()) return;
-        }
         String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
@@ -253,13 +274,33 @@ public class Parser extends java_cup.runtime.lr_parser {
                         + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
             case "CORCHETE_DER":
                 mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+                        + lexActual + "'. | ✏ Correcto: "
+                        + (pendingTransitionOrigin != null && pendingTransitionDest != null
+                           && !pendingTransitionSymbols.isEmpty()
+                            ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                              + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                            : "q0 -> q1 ['símbolo'];");
+                break;
             case "COMA":
                 mensaje = "[SinError 010] Después de ',' se esperaba otro elemento, pero se encontró '"
                         + lexActual + "'. | ✏ Ej: ALFABETO { 'a', 'b' };  ó  FINAL q1, q2;"; break;
             case "COMILLA_SIMPLE":
-                mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'"; break;
+                // Closing ' of a symbol; if next token starts a new statement it means ] was forgotten
+                if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)
+                        || "INICIO".equals(compActual) || "ESTADO".equals(compActual)
+                        || "FINAL".equals(compActual)  || "TIPO".equals(compActual)
+                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)) {
+                    String missClose = (pendingTransitionOrigin != null && pendingTransitionDest != null
+                                        && !pendingTransitionSymbols.isEmpty())
+                        ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                          + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                        : "q0 -> q1 ['símbolo'];";
+                    mensaje = "[SinError 010] Falta el corchete de cierre ']' después del símbolo. | ✏ Correcto: " + missClose;
+                } else {
+                    mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'";
+                }
+                break;
             case "IDENTIFICADOR": case "COLOR":
                 if ("FLECHA".equals(compActual)) {
                     mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
@@ -290,17 +331,6 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
-        // E3: suppress if syntax_error already reported an error on this same line
-        if (!errors.isEmpty()) {
-            int lastLine = errors.get(errors.size() - 1).getLine();
-            int thisLine = (t != null) ? t.getLine() : -1;
-            if (lastLine > 0 && lastLine == thisLine) return;
-        }
-        // Suppress if other syntax errors already explain the problem.
-        // SinError 011 at EOF only adds value when no specific error was reported.
-        boolean hasSinError = errors.stream()
-                .anyMatch(e -> e.getDescription() != null && e.getDescription().contains("SinError"));
-        if (hasSinError) return;
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String contexto;
@@ -390,7 +420,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 100] Estructura de programa mal formada. | ✏ Verifica que el programa tenga: TIPO, ALFABETO, estados, transiciones y FINAL.", null));
+        parser.errors.add(new ErrorLSSL(1, "[SemError 100] Estructura de programa mal formada", null));
         RESULT = new ASTNode("Error_Program");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -446,7 +476,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 101] Falta TIPO y ALFABETO al inicio del programa. | ✏ El programa debe comenzar con: TIPO AFD;  ALFABETO { 'a', 'b' };", null));
+        parser.errors.add(new ErrorLSSL(1, "[SemError 101] Falta TIPO y ALFABETO al inicio del programa", null));
         RESULT = new ASTNode("Error_Config");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -490,6 +520,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		 
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -517,6 +548,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 013] ALFABETO debe ir: ALFABETO { 'a', 'b', ... };", tokenAnterior));
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AlphabetDef",6, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -591,6 +623,8 @@ class CUP$Parser$actions {
 		
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("'" + t.getLexeme() + "'");
         RESULT = new ASTNode("Symbol", t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -606,6 +640,8 @@ class CUP$Parser$actions {
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("EPSILON");
         RESULT = new ASTNode("Symbol", "EPSILON");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -716,6 +752,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -743,6 +780,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato: ESTADO <nombre>;", tokenAnterior));
         RESULT = new ASTNode("StateDecl", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -847,20 +885,16 @@ class CUP$Parser$actions {
 		int destinoleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
 		int destinoright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
 		Object destino = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-
-        // E5: replace the generic SinError 010 on this line with a transition-specific message
-        Token tOri = (origen instanceof Token) ? (Token)origen : null;
-        Token tDes = (destino instanceof Token) ? (Token)destino : null;
-        if (tOri != null && !parser.errors.isEmpty()) {
-            int lastLine = parser.errors.get(parser.errors.size() - 1).getLine();
-            if (lastLine > 0 && lastLine == tOri.getLine())
-                parser.errors.remove(parser.errors.size() - 1);
+		
+        Token tOri = (Token)origen;
+        int orLine = tOri.getLine();
+        // Suppress if syntax_error already reported a problem on a nearby line
+        // (this production fires as cascade recovery of the same broken transition)
+        boolean alreadyReported = !parser.errors.isEmpty() &&
+            Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
+        if (!alreadyReported) {
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
         }
-        String oriName = tOri != null ? tOri.getLexeme() : "?";
-        String desName = tDes != null ? tDes.getLexeme() : "?";
-        parser.errors.add(new ErrorLSSL(1,
-            "[SinError 014] Transición mal formada: " + oriName + " -> " + desName + " [símbolo];  | ✏ Correcto: " + oriName + " -> " + desName + " ['a'];",
-            tOri));
         RESULT = new ASTNode("Transition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Transition",7, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -922,7 +956,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 103] Falta la declaración de estados finales. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
+        parser.errors.add(new ErrorLSSL(1, "[SemError 103] Falta FINAL <estado> [, <estado>, ...];", null));
         RESULT = new ASTNode("Acceptance_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AcceptanceSection",4, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -950,6 +984,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("FinalDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -1015,6 +1050,9 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1,
+            "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+            tokenAnterior));
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",11, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
