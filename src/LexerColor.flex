@@ -36,11 +36,11 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     {Comment}          { return textColor(yychar, yylength(), new Color(146, 146, 146)); }
 
     /* Palabras clave principales (Azul Marino) */
-    "TIPO" | 
-    "ALFABETO" | 
-    "INICIO" | 
-    "FINAL" | 
-    "ESTADO"           { return textColor(yychar, yylength(), new Color(0, 80, 136)); }
+    "TIPO" |
+    "ALFABETO" |
+    "INICIO" |
+    "FINAL" |
+    "ESTADOS"          { return textColor(yychar, yylength(), new Color(0, 80, 136)); }
 
     /* Configuraciones y variables especiales (Verde Esmeralda) */
     "EPSILON" | 

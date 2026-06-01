@@ -49,7 +49,7 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     "ALFABETO"         { return token(yytext(), "ALFABETO", yyline, yycolumn, sym.ALFABETO); }
     "INICIO"           { return token(yytext(), "INICIO",   yyline, yycolumn, sym.INICIO);   }
     "FINAL"            { return token(yytext(), "FINAL",    yyline, yycolumn, sym.FINAL);    }
-    "ESTADO"           { return token(yytext(), "ESTADO",   yyline, yycolumn, sym.ESTADO);   }
+    "ESTADOS"          { return token(yytext(), "ESTADOS",  yyline, yycolumn, sym.ESTADOS);  }
 
     /* Configuraciones especiales */
     "EPSILON"          { return token(yytext(), "EPSILON", yyline, yycolumn, sym.EPSILON); }

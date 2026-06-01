@@ -820,7 +820,7 @@ class Lexer implements java_cup.runtime.Scanner {
       else {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1:
-            { return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.ERROR);
+            { return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.error);
             }
           // fall through
           case 25: break;
@@ -870,7 +870,7 @@ class Lexer implements java_cup.runtime.Scanner {
           // fall through
           case 34: break;
           case 11:
-            { yybegin(YYINITIAL); return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.ERROR);
+            { yybegin(YYINITIAL); return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.error);
             }
           // fall through
           case 35: break;
@@ -880,7 +880,7 @@ class Lexer implements java_cup.runtime.Scanner {
           // fall through
           case 36: break;
           case 13:
-            { yybegin(YYINITIAL); return token(yytext(), "ERROR_COLOR", yyline, yycolumn, sym.ERROR);
+            { yybegin(YYINITIAL); return token(yytext(), "ERROR_COLOR", yyline, yycolumn, sym.error);
             }
           // fall through
           case 37: break;

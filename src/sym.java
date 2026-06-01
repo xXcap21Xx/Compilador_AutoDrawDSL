@@ -24,7 +24,7 @@ public class sym {
   public static final int IDENTIFICADOR = 19;
   public static final int LLAVE_IZQ = 14;
   public static final int LLAVE_DER = 15;
-  public static final int ESTADO = 6;
+  public static final int ESTADOS = 6;
   public static final int PUNTO_Y_COMA = 17;
   public static final int INICIO = 4;
   public static final String[] terminalNames = new String[] {
@@ -34,7 +34,7 @@ public class sym {
   "ALFABETO",
   "INICIO",
   "FINAL",
-  "ESTADO",
+  "ESTADOS",
   "EPSILON",
   "FONDO",
   "AFD",

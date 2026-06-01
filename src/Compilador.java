@@ -249,7 +249,7 @@ public class Compilador extends javax.swing.JFrame {
     private void mostrarVentanaSimbolos() {
         // 1. Verificamos la lista correcta
         if (listaSimbolosGlobal == null || listaSimbolosGlobal.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "La tabla de símbolos está vacía.\nAsegúrate de compilar código que tenga declaraciones (ej. ESTADO q0; o TIPO AFD;)", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "La tabla de símbolos está vacía.\nAsegúrate de compilar código que tenga declaraciones (ej. ESTADOS { q0, q1 }; o TIPO AFD;)", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -377,11 +377,11 @@ public class Compilador extends javax.swing.JFrame {
         if (!hasAutomatonType)
             errors.add(new ErrorLSSL(1, "[SemError 001] No se declaró el tipo de autómata. | ✏ Agrega al inicio del programa: TIPO AFD;  ó  TIPO AFN;", null));
         if (initialStates.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ALFABETO)", null));
+            errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ESTADOS o ALFABETO)", null));
         if (finalStates.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
+            errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega antes de las transiciones: FINAL q2;  ó  FINAL q1, q2;", null));
         if (alphabetSymbols.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO)", null));
+            errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO o FONDO, antes de ESTADOS/INICIO)", null));
 
         boolean isAFD = false;
         for (SimboloDSL sym : listaSimbolosGlobal) {
@@ -442,12 +442,12 @@ public class Compilador extends javax.swing.JFrame {
             }
             Token locTok = findTransitionToken(origin, destination, counter);
             if (origin != null && !declaredStates.contains(origin)) {
-                String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrega: ESTADO " + origin + ";  (o INICIO " + origin + "; si es el estado inicial)";
+                String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrégalo en: ESTADOS { " + origin + ", ... };  (o INICIO " + origin + "; si es el estado inicial)";
                 if (reportedErrors.add(msg))
                     errors.add(new ErrorLSSL(1, msg, locTok));
             }
             if (destination != null && !declaredStates.contains(destination)) {
-                String msg = "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrega: ESTADO " + destination + ";  (antes de las transiciones)";
+                String msg = "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrégalo en: ESTADOS { " + destination + ", ... };  (antes de las transiciones)";
                 if (reportedErrors.add(msg))
                     errors.add(new ErrorLSSL(1, msg, locTok));
             }
@@ -608,7 +608,7 @@ public class Compilador extends javax.swing.JFrame {
                         || "LLAVE_IZQ".equals(comp) || "LLAVE_DER".equals(comp)
                         || "TIPO".equals(comp) || "ALFABETO".equals(comp)
                         || "INICIO".equals(comp) || "FINAL".equals(comp)
-                        || "ESTADO".equals(comp) || "FONDO".equals(comp)
+                        || "ESTADOS".equals(comp) || "FONDO".equals(comp)
                         || "AFD".equals(comp)    || "AFN".equals(comp)) break;
                 j++;
             }
