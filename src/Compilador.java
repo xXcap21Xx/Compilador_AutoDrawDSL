@@ -44,23 +44,25 @@ public class Compilador extends javax.swing.JFrame {
      * elemento del Document de JTextPane.
      *
      * Causa raíz identificada:
-     *   JFlex cuenta líneas con yyline (base 0).  El Lexer suma +1 para hacerlo
-     *   base 1, pero panel_Codigo.getText() devuelve el texto del JTextPane con
-     *   un párrafo vacío implícito al inicio del Document, lo que hace que JFlex
-     *   ya haya avanzado yyline=1 cuando encuentra el primer carácter visible.
-     *   Resultado: token.getLine() = línea_gutter - 1  (TOKEN_LINE_OFFSET = 1).
+     *   JFlex cuenta líneas con yyline (base 0) y el Lexer suma +1 → getLine()
+     *   es 1-indexed y coincide directamente con el gutter correcto.
+     *   El gutter propio (inicializarNumeradorLineas) muestra elemento N como
+     *   línea N+1, por lo que: gutter = getLine() → TOKEN_LINE_OFFSET = 0.
      *
-     *   Por su parte, getDefaultRootElement().getElement(N) apunta al párrafo
-     *   (N+2)-ésimo del gutter porque el Document tiene ese mismo párrafo vacío
-     *   inicial (índice 0) más la numeración base-0 de los elementos.
-     *   Resultado: elemIdx = lineaGutter - 2  (DOC_ELEM_OFFSET = 2).
+     *   getDefaultRootElement().getElement(N) es 0-indexed; para la línea L
+     *   (1-indexed) el elemento es L-1 → DOC_ELEM_OFFSET = 1.
+     *
+     *   Nota histórica: compilerTools.Functions.setLineNumberOnJTextComponent
+     *   tenía un bug de +2 en la numeración (mostraba elemento N como línea N+2,
+     *   arrancaba en 3 y omitía la última línea). Los offsets anteriores eran 1 y 2
+     *   para compensarlo; al reemplazar el gutter por uno correcto se normalizan a 0 y 1.
      *
      * Reglas de uso:
      *   errorLine  = token.getLine() + TOKEN_LINE_OFFSET   → número para mostrar
      *   elemIdx    = errorLine       - DOC_ELEM_OFFSET      → índice de Document
      */
-    private static final int TOKEN_LINE_OFFSET = 1;
-    private static final int DOC_ELEM_OFFSET   = 2;
+    private static final int TOKEN_LINE_OFFSET = 0;
+    private static final int DOC_ELEM_OFFSET   = 1;
 
     private String title;
     private Directory Directorio;
@@ -92,7 +94,7 @@ public class Compilador extends javax.swing.JFrame {
                 System.exit(0);
             }
         });
-        Functions.setLineNumberOnJTextComponent(panel_Codigo, jScrollPane1);
+        inicializarNumeradorLineas();
         timerKeyReleased = new Timer((int) (1000 * 0.3), (ActionEvent e) -> {
             timerKeyReleased.stop();
             colorAnalysis();
@@ -277,6 +279,65 @@ public class Compilador extends javax.swing.JFrame {
         errors.clear();
         codeHasBeenCompiled = false;
         panel_Codigo.getHighlighter().removeAllHighlights();
+    }
+
+    /** Instala un gutter de numeración de líneas correcto (1-indexed, todas las líneas). */
+    private void inicializarNumeradorLineas() {
+        javax.swing.JComponent gutter = new javax.swing.JComponent() {
+            private static final int PAD = 6;
+            {
+                setBackground(new java.awt.Color(240, 240, 240));
+                setForeground(new java.awt.Color(110, 110, 110));
+                setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 13));
+                setOpaque(true);
+                setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 0, 1,
+                        new java.awt.Color(200, 200, 200)));
+            }
+
+            @Override
+            public java.awt.Dimension getPreferredSize() {
+                int n = panel_Codigo.getDocument().getDefaultRootElement().getElementCount();
+                java.awt.FontMetrics fm = getFontMetrics(getFont());
+                int w = fm.stringWidth(String.valueOf(Math.max(n, 99))) + PAD * 2;
+                return new java.awt.Dimension(w, panel_Codigo.getHeight());
+            }
+
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                g.setColor(getBackground());
+                g.fillRect(0, 0, getWidth(), getHeight());
+                g.setColor(getForeground());
+                g.setFont(getFont());
+                java.awt.FontMetrics fm = g.getFontMetrics();
+                javax.swing.text.Element root =
+                        panel_Codigo.getDocument().getDefaultRootElement();
+                for (int i = 0, n = root.getElementCount(); i < n; i++) {
+                    try {
+                        java.awt.Rectangle r = panel_Codigo.modelToView(
+                                root.getElement(i).getStartOffset());
+                        if (r == null) continue;
+                        String num = String.valueOf(i + 1);
+                        g.drawString(num,
+                                getWidth() - fm.stringWidth(num) - PAD,
+                                r.y + fm.getAscent());
+                    } catch (javax.swing.text.BadLocationException ex) { /* skip */ }
+                }
+            }
+        };
+
+        // Repintar cuando el documento cambia
+        panel_Codigo.getDocument().addDocumentListener(
+                new javax.swing.event.DocumentListener() {
+                    public void insertUpdate (javax.swing.event.DocumentEvent e) { repaint(); }
+                    public void removeUpdate (javax.swing.event.DocumentEvent e) { repaint(); }
+                    public void changedUpdate(javax.swing.event.DocumentEvent e) { repaint(); }
+                    void repaint() { gutter.revalidate(); gutter.repaint(); }
+                });
+
+        // Sincronizar repintado al hacer scroll
+        jScrollPane1.getViewport().addChangeListener(e -> gutter.repaint());
+
+        jScrollPane1.setRowHeaderView(gutter);
     }
 
 
@@ -970,7 +1031,7 @@ public class Compilador extends javax.swing.JFrame {
                     Functions.addRowDataInTable(tbl_Token, data);
 
                     if (token.getLexicalComp().equals("ERROR_LEXICO")) {
-                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter '" + token.getLexeme() + "' no reconocido", token));
+                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter '" + token.getLexeme() + "' no reconocido. | ✏ Elimina o reemplaza el carácter; solo se permiten letras, dígitos y los símbolos del DSL.", token));
                     } else if (token.getLexicalComp().equals("ERROR_COLOR")) {
                         errors.add(new ErrorLSSL(1,
                             "[LexError 002] Color '" + token.getLexeme() + "' no es un color válido para FONDO. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",

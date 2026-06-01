@@ -234,7 +234,9 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        Token ref = (t != null) ? t : tokenAnterior;
+        // Con el gutter corregido (1-indexed), el token anterior (último aceptado)
+        // apunta a la línea del error; ya no se necesita compensar con el lookahead.
+        Token ref = (tokenAnterior != null) ? tokenAnterior : t;
         String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
