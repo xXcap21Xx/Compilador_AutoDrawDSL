@@ -16,6 +16,16 @@ parser code {:
     private Token tokenActual = null;
     private String automatonType = null;
     private String initialState = null;
+    // Structural section tracking — used for order-error detection in syntax_error
+    public boolean seenAlphabet = false;
+    public boolean seenFinal    = false;
+
+    // Transition context tracked token-by-token for error message reconstruction
+    private boolean expectingTransitionDest = false;
+    public boolean inTransitionBrackets = false;
+    public String pendingTransitionOrigin = null;
+    public String pendingTransitionDest = null;
+    public java.util.List<String> pendingTransitionSymbols = new java.util.ArrayList<>();
 
     @Override
     public Symbol scan() throws java.lang.Exception {
@@ -23,6 +33,25 @@ parser code {:
         if (sym != null && sym.value instanceof Token) {
             tokenAnterior = tokenActual;
             tokenActual = (Token) sym.value;
+            String comp = tokenActual.getLexicalComp();
+            if ("FLECHA".equals(comp)) {
+                pendingTransitionOrigin = (tokenAnterior != null) ? tokenAnterior.getLexeme() : null;
+                pendingTransitionDest = null;
+                pendingTransitionSymbols.clear();
+                expectingTransitionDest = true;
+            } else if (expectingTransitionDest
+                    && ("IDENTIFICADOR".equals(comp) || "COLOR".equals(comp))) {
+                pendingTransitionDest = tokenActual.getLexeme();
+                expectingTransitionDest = false;
+            } else if ("CORCHETE_IZQ".equals(comp)) {
+                pendingTransitionSymbols.clear();
+                inTransitionBrackets = true;
+            } else if ("CORCHETE_DER".equals(comp)) {
+                inTransitionBrackets = false;
+            } else if ("LLAVE_IZQ".equals(comp)) {
+                inTransitionBrackets = false;
+                pendingTransitionSymbols.clear();
+            }
         }
         return sym;
     }
@@ -33,13 +62,36 @@ parser code {:
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        Token ref = (t != null) ? t : tokenAnterior;
+        // Con el gutter corregido (1-indexed), el token anterior (último aceptado)
+        // apunta a la línea del error; ya no se necesita compensar con el lookahead.
+        Token ref = (tokenAnterior != null) ? tokenAnterior : t;
         String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String lexAnterior  = (tokenAnterior != null) ? tokenAnterior.getLexeme() : "";
 
         String mensaje;
+        // ── Orden estructural y duplicados (antes del switch de contexto) ─────────
+        if ("TIPO".equals(compActual) && automatonType != null) {
+            mensaje = "[SinError 021] El tipo de autómata ya fue declarado como '"
+                    + automatonType + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo debe haber un TIPO al inicio del programa.";
+        } else if ("INICIO".equals(compActual) && initialState != null) {
+            mensaje = "[SinError 022] El estado inicial ya fue declarado como '"
+                    + initialState + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo puede haber un INICIO.";
+        } else if ("FINAL".equals(compActual) && seenFinal) {
+            mensaje = "[SinError 010] FINAL ya fue declarado. | ✏ Elimina la declaración duplicada de FINAL.";
+        } else if ("ALFABETO".equals(compActual) && seenAlphabet) {
+            mensaje = "[SinError 010] ALFABETO declarado más de una vez. | ✏ Solo debe haber un ALFABETO en el programa.";
+        } else if ("FINAL".equals(compActual) && initialState == null) {
+            mensaje = "[SinError 010] FINAL aparece antes de INICIO. | ✏ Orden: [ESTADOS { ... };]  INICIO q0;  FINAL q2;";
+        } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual))
+                   && initialState != null && !seenFinal) {
+            // Token de inicio de transición donde se esperaba FINAL
+            mensaje = "[SinError 010] Se esperaba FINAL antes de las transiciones, pero se encontró '"
+                    + lexActual + "'. | ✏ Agrega primero: FINAL q2;  (luego escribe las transiciones)";
+        } else
         switch (compAnterior) {
             case "TIPO":
                 mensaje = "[SinError 010] Después de TIPO se esperaba AFD o AFN, pero se encontró '"
@@ -48,17 +100,29 @@ parser code {:
                 mensaje = "[SinError 010] Después de ALFABETO se esperaba '{', pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
             case "LLAVE_IZQ":
-                mensaje = "[SinError 010] Dentro de '{...}' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+                if (seenAlphabet) {
+                    mensaje = "[SinError 010] Dentro de 'ESTADOS { ... }' se esperaba un nombre de estado, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
+                } else {
+                    mensaje = "[SinError 010] Dentro de 'ALFABETO { ... }' se esperaba un símbolo o EPSILON, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                }
+                break;
             case "LLAVE_DER":
-                mensaje = "[SinError 010] Después de '}' se esperaba ';', pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+                if (seenAlphabet) {
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
+                } else {
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                }
+                break;
             case "INICIO":
                 mensaje = "[SinError 010] Después de INICIO se esperaba el nombre del estado inicial, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: INICIO q0;"; break;
-            case "ESTADO":
-                mensaje = "[SinError 010] Después de ESTADO se esperaba el nombre del estado, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ESTADO q1;"; break;
+            case "ESTADOS":
+                mensaje = "[SinError 010] Después de ESTADOS se esperaba '{', pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2 };"; break;
             case "FINAL":
                 mensaje = "[SinError 010] Después de FINAL se esperaba el nombre del estado final, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;"; break;
@@ -73,13 +137,45 @@ parser code {:
                         + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
             case "CORCHETE_DER":
                 mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+                        + lexActual + "'. | ✏ Correcto: "
+                        + (pendingTransitionOrigin != null && pendingTransitionDest != null
+                           && !pendingTransitionSymbols.isEmpty()
+                            ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                              + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                            : "q0 -> q1 ['símbolo'];");
+                break;
             case "COMA":
-                mensaje = "[SinError 010] Después de ',' se esperaba otro elemento, pero se encontró '"
-                        + lexActual + "'. | ✏ Ej: ALFABETO { 'a', 'b' };  ó  FINAL q1, q2;"; break;
+                if (!seenAlphabet) {
+                    // Dentro de ALFABETO { ... } — ALFABETO aún no completado
+                    mensaje = "[SinError 010] Después de ',' en ALFABETO se esperaba otro símbolo, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                } else if (initialState == null) {
+                    // Dentro de ESTADOS { ... } — INICIO todavía no declarado
+                    mensaje = "[SinError 010] Después de ',' en ESTADOS se esperaba otro nombre de estado, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, q3 };";
+                } else {
+                    // Dentro de FINAL q1, ... — INICIO ya declarado, seenFinal aún false
+                    mensaje = "[SinError 010] Después de ',' en FINAL se esperaba otro estado final, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: FINAL q1, q2;";
+                }
+                break;
             case "COMILLA_SIMPLE":
-                mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'"; break;
+                // Closing ' of a symbol; if next token starts a new statement it means ] was forgotten
+                if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)
+                        || "INICIO".equals(compActual) || "ESTADOS".equals(compActual)
+                        || "FINAL".equals(compActual)  || "TIPO".equals(compActual)
+                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)) {
+                    String missClose = (pendingTransitionOrigin != null && pendingTransitionDest != null
+                                        && !pendingTransitionSymbols.isEmpty())
+                        ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                          + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                        : "q0 -> q1 ['símbolo'];";
+                    mensaje = "[SinError 010] Falta el corchete de cierre ']' después del símbolo. | ✏ Correcto: " + missClose;
+                } else {
+                    mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'";
+                }
+                break;
             case "IDENTIFICADOR": case "COLOR":
                 if ("FLECHA".equals(compActual)) {
                     mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
@@ -113,23 +209,29 @@ parser code {:
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String contexto;
-        if ("TIPO".equals(compAnterior) || "ALFABETO".equals(compAnterior) || "FONDO".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la sección de configuración (TIPO, ALFABETO).";
-        } else if ("INICIO".equals(compAnterior) || "ESTADO".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la declaración de estados (INICIO, ESTADO).";
-        } else if ("FLECHA".equals(compAnterior) || "CORCHETE_IZQ".equals(compAnterior) || "CORCHETE_DER".equals(compAnterior)) {
-            contexto = " | ✏ Verifica que las transiciones tengan el formato: estado -> estado ['simbolo'];";
+        if ("TIPO".equals(compAnterior) || "AFD".equals(compAnterior) || "AFN".equals(compAnterior)) {
+            contexto = " | ✏ Sección de configuración: TIPO AFD;  [FONDO color;]  ALFABETO { 'a', 'b' };";
+        } else if ("FONDO".equals(compAnterior) || "COLOR".equals(compAnterior)) {
+            contexto = " | ✏ Después de FONDO va el alfabeto: FONDO gris;  ALFABETO { 'a', 'b' };";
+        } else if ("ALFABETO".equals(compAnterior) || "LLAVE_IZQ".equals(compAnterior) || "LLAVE_DER".equals(compAnterior)) {
+            contexto = " | ✏ Después de ALFABETO van los estados: ALFABETO { 'a' };  [ESTADOS { q1 };]  INICIO q0;";
+        } else if ("ESTADOS".equals(compAnterior)) {
+            contexto = " | ✏ Después de ESTADOS va INICIO: ESTADOS { q1, q2 };  INICIO q0;";
+        } else if ("INICIO".equals(compAnterior)) {
+            contexto = " | ✏ Después de INICIO va FINAL: INICIO q0;  FINAL q2;";
         } else if ("FINAL".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la declaración de estados finales: FINAL q2;";
+            contexto = " | ✏ Después de FINAL van las transiciones: FINAL q2;  q0 -> q1 ['a'];";
+        } else if ("FLECHA".equals(compAnterior) || "CORCHETE_IZQ".equals(compAnterior) || "CORCHETE_DER".equals(compAnterior)) {
+            contexto = " | ✏ Formato de transición: q0 -> q1 ['símbolo'];";
         } else {
-            contexto = " | ✏ Revisa la estructura general del programa.";
+            contexto = " | ✏ Orden del programa: TIPO, [FONDO,] ALFABETO, [ESTADOS,] INICIO, FINAL, transiciones.";
         }
         errors.add(new ErrorLSSL(1, "[SinError 011] Error no recuperable cerca de '" + lexema + "'." + contexto, t));
     }
 :};
 
 /* ====================== TERMINALES ====================== */
-terminal TIPO, ALFABETO, INICIO, FINAL, ESTADO;
+terminal TIPO, ALFABETO, INICIO, FINAL, ESTADOS;
 terminal EPSILON, FONDO, AFD, AFN;
 terminal FLECHA, CORCHETE_IZQ, CORCHETE_DER, LLAVE_IZQ, LLAVE_DER;
 terminal COMILLA_SIMPLE, PUNTO_Y_COMA, COMA;
@@ -142,7 +244,7 @@ non terminal ASTNode Program;
 non terminal ASTNode ConfigSection, StateDeclarationSection, TransitionSection, AcceptanceSection;
 non terminal ASTNode ConfigType, AlphabetDef, Transition, StartDef, FinalDef, StateDef, BackgroundDef;
 non terminal ASTNode SymbolList, StateList, SymbolVal, TransitionSymbolList;
-non terminal ASTNode StateDeclarationList, TransitionList;
+non terminal ASTNode StateNameList, TransitionList;
 /* Ident: acepta IDENTIFICADOR o COLOR (un color puede ser nombre de estado o símbolo) */
 non terminal Object Ident;
 
@@ -151,41 +253,41 @@ start with Program;
 
 /* ====================== PRODUCCIONES PRINCIPALES ====================== */
 
-Program ::= ConfigSection:cfg StateDeclarationSection:sts TransitionSection:trs AcceptanceSection:acc
-    {: 
+Program ::= ConfigSection:cfg StateDeclarationSection:sts AcceptanceSection:acc TransitionSection:trs
+    {:
         ASTNode root = new ASTNode("AutomataDSL_Program");
         root.addChild(cfg);
         root.addChild(sts);
-        root.addChild(trs);
         root.addChild(acc);
+        root.addChild(trs);
         RESULT = root;
     :}
     | error PUNTO_Y_COMA
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SemError 100] Estructura de programa mal formada", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 023] Estructura de programa mal formada. | ✏ Orden correcto: TIPO, [FONDO,] ALFABETO, [ESTADOS,] INICIO, FINAL, transiciones.", null));
         RESULT = new ASTNode("Error_Program");
     :}
     ;
 
-/* ====================== SECCIÓN 1: CONFIGURACIÓN (TIPO, ALFABETO) ====================== */
-ConfigSection ::= ConfigType:ct AlphabetDef:ab
+/* ====================== SECCIÓN 1: CONFIGURACIÓN (TIPO, [FONDO,] ALFABETO) ====================== */
+ConfigSection ::= ConfigType:ct BackgroundDef:bg AlphabetDef:ab
     {:
         ASTNode node = new ASTNode("Config_Section");
         node.addChild(ct);
+        node.addChild(bg);
         node.addChild(ab);
         RESULT = node;
     :}
-    | ConfigType:ct AlphabetDef:ab BackgroundDef:bg
+    | ConfigType:ct AlphabetDef:ab
     {:
         ASTNode node = new ASTNode("Config_Section");
         node.addChild(ct);
         node.addChild(ab);
-        node.addChild(bg);
         RESULT = node;
     :}
     | error
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SemError 101] Falta TIPO y ALFABETO al inicio del programa", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 024] Falta la sección de configuración al inicio del programa. | ✏ Estructura: TIPO AFD;  [FONDO color;]  ALFABETO { 'a', 'b' };", null));
         RESULT = new ASTNode("Error_Config");
     :}
     ;
@@ -210,7 +312,8 @@ ConfigType ::= TIPO AFD:a PUNTO_Y_COMA
     ;
 
 AlphabetDef ::= ALFABETO LLAVE_IZQ SymbolList:sl LLAVE_DER PUNTO_Y_COMA
-    {: 
+    {:
+        parser.seenAlphabet = true;
         ASTNode node = new ASTNode("AlphabetDefinition");
         node.addChild(sl);
         RESULT = node;
@@ -246,21 +349,25 @@ SymbolVal ::= COMILLA_SIMPLE Ident:id COMILLA_SIMPLE
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("'" + t.getLexeme() + "'");
         RESULT = new ASTNode("Symbol", t.getLexeme());
     :}
     | EPSILON:e
     {:
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("EPSILON");
         RESULT = new ASTNode("Symbol", "EPSILON");
     :}
     ;
 
-/* ====================== SECCIÓN 2: DECLARACIÓN DE ESTADOS ====================== */
-StateDeclarationSection ::= StartDef:s StateDeclarationList:sdl
+/* ====================== SECCIÓN 2: DECLARACIÓN DE ESTADOS ([ESTADOS,] INICIO) ====================== */
+StateDeclarationSection ::= StateDef:sd StartDef:s
     {:
         ASTNode node = new ASTNode("State_Declaration_Section");
+        node.addChild(sd);
         node.addChild(s);
-        node.addChild(sdl);
         RESULT = node;
     :}
     | StartDef:s
@@ -271,21 +378,8 @@ StateDeclarationSection ::= StartDef:s StateDeclarationList:sdl
     :}
     | error
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SemError 102] Falta INICIO <estado>;", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 025] Falta la declaración del estado inicial. | ✏ Agrega después de ALFABETO/ESTADOS: INICIO q0;", null));
         RESULT = new ASTNode("State_Declaration_Section", "ERROR");
-    :}
-    ;
-
-StateDeclarationList ::= StateDeclarationList:sdl StateDef:st
-    {:
-        sdl.addChild(st);
-        RESULT = sdl;
-    :}
-    | StateDef:st
-    {:
-        ASTNode node = new ASTNode("StateList");
-        node.addChild(st);
-        RESULT = node;
     :}
     ;
 
@@ -303,16 +397,33 @@ StartDef ::= INICIO Ident:id PUNTO_Y_COMA
     :}
     ;
 
-StateDef ::= ESTADO Ident:id PUNTO_Y_COMA
+StateDef ::= ESTADOS LLAVE_IZQ StateNameList:sl LLAVE_DER PUNTO_Y_COMA
+    {:
+        ASTNode node = new ASTNode("StateDeclList");
+        node.addChild(sl);
+        RESULT = node;
+    :}
+    | ESTADOS error PUNTO_Y_COMA
+    {:
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato incorrecto. | ✏ Correcto: ESTADOS { q1, q2, ... };", tokenAnterior));
+        RESULT = new ASTNode("StateDeclList", "ERROR");
+    :}
+    ;
+
+StateNameList ::= StateNameList:sl COMA Ident:id
     {:
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "State_Declared", t);
-        RESULT = new ASTNode("StateDecl", t.getLexeme());
+        sl.addChild(new ASTNode("StateDecl", t.getLexeme()));
+        RESULT = sl;
     :}
-    | ESTADO error PUNTO_Y_COMA
+    | Ident:id
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato: ESTADO <nombre>;", tokenAnterior));
-        RESULT = new ASTNode("StateDecl", "ERROR");
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "State_Declared", t);
+        ASTNode node = new ASTNode("StateNameList");
+        node.addChild(new ASTNode("StateDecl", t.getLexeme()));
+        RESULT = node;
     :}
     ;
 
@@ -356,7 +467,14 @@ Transition ::= Ident:origen FLECHA Ident:destino CORCHETE_IZQ TransitionSymbolLi
     | Ident:origen FLECHA Ident:destino error PUNTO_Y_COMA
     {:
         Token tOri = (Token)origen;
-        parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        int orLine = tOri.getLine();
+        // Suppress if syntax_error already reported a problem on a nearby line
+        // (this production fires as cascade recovery of the same broken transition)
+        boolean alreadyReported = !parser.errors.isEmpty() &&
+            Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
+        if (!alreadyReported) {
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+        }
         RESULT = new ASTNode("Transition", "ERROR");
     :}
     ;
@@ -383,13 +501,14 @@ AcceptanceSection ::= FinalDef:f
     :}
     | error
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SemError 103] Falta FINAL <estado> [, <estado>, ...];", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 026] Falta la declaración de estados finales. | ✏ Agrega antes de las transiciones: FINAL q2;  ó  FINAL q1, q2;", null));
         RESULT = new ASTNode("Acceptance_Section", "ERROR");
     :}
     ;
 
 FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
     {:
+        parser.seenFinal = true;
         ASTNode node = new ASTNode("FinalStates");
         node.addChild(sl);
         RESULT = node;

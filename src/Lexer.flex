@@ -49,7 +49,7 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     "ALFABETO"         { return token(yytext(), "ALFABETO", yyline, yycolumn, sym.ALFABETO); }
     "INICIO"           { return token(yytext(), "INICIO",   yyline, yycolumn, sym.INICIO);   }
     "FINAL"            { return token(yytext(), "FINAL",    yyline, yycolumn, sym.FINAL);    }
-    "ESTADO"           { return token(yytext(), "ESTADO",   yyline, yycolumn, sym.ESTADO);   }
+    "ESTADOS"          { return token(yytext(), "ESTADOS",  yyline, yycolumn, sym.ESTADOS);  }
 
     /* Configuraciones especiales */
     "EPSILON"          { return token(yytext(), "EPSILON", yyline, yycolumn, sym.EPSILON); }
@@ -73,7 +73,7 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     {Identifier}       { return token(yytext(), "IDENTIFICADOR", yyline, yycolumn, sym.IDENTIFICADOR); }
 
     /* Cualquier carácter no reconocido: error léxico */
-    .                  { return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.ERROR); }
+    .                  { return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.error); }
 }
 
 /* ============================================================
@@ -91,11 +91,11 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
                        { yybegin(YYINITIAL); return token(yytext(), "COLOR", yyline, yycolumn, sym.COLOR); }
 
     /* Identificador que no es un color válido: LexError 002 */
-    {Identifier}       { yybegin(YYINITIAL); return token(yytext(), "ERROR_COLOR", yyline, yycolumn, sym.ERROR); }
+    {Identifier}       { yybegin(YYINITIAL); return token(yytext(), "ERROR_COLOR", yyline, yycolumn, sym.error); }
 
     /* ';' sin color previo: volver al estado normal para que el parser lo procese */
     ";"                { yybegin(YYINITIAL); return token(yytext(), "PUNTO_Y_COMA", yyline, yycolumn, sym.PUNTO_Y_COMA); }
 
     /* Cualquier otro carácter: error léxico genérico */
-    .                  { yybegin(YYINITIAL); return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.ERROR); }
+    .                  { yybegin(YYINITIAL); return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.error); }
 }

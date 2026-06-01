@@ -35,14 +35,14 @@ public class Parser extends java_cup.runtime.lr_parser {
   protected static final short _production_table[][] = 
     unpackFromStrings(new String[] {
     "\000\052\000\002\002\004\000\002\002\006\000\002\002" +
-    "\004\000\002\003\004\000\002\003\005\000\002\003\003" +
+    "\004\000\002\003\005\000\002\003\004\000\002\003\003" +
     "\000\002\007\005\000\002\007\005\000\002\007\005\000" +
     "\002\010\007\000\002\010\005\000\002\016\005\000\002" +
     "\016\003\000\002\024\003\000\002\024\003\000\002\020" +
     "\005\000\002\020\003\000\002\004\004\000\002\004\003" +
-    "\000\002\004\003\000\002\022\004\000\002\022\003\000" +
-    "\002\012\005\000\002\012\005\000\002\014\005\000\002" +
-    "\014\005\000\002\005\003\000\002\005\002\000\002\023" +
+    "\000\002\004\003\000\002\012\005\000\002\012\005\000" +
+    "\002\014\007\000\002\014\005\000\002\022\005\000\002" +
+    "\022\003\000\002\005\003\000\002\005\002\000\002\023" +
     "\004\000\002\023\003\000\002\011\011\000\002\011\007" +
     "\000\002\021\005\000\002\021\003\000\002\006\003\000" +
     "\002\006\003\000\002\013\005\000\002\013\005\000\002" +
@@ -55,60 +55,60 @@ public class Parser extends java_cup.runtime.lr_parser {
   /** Parse-action table. */
   protected static final short[][] _action_table = 
     unpackFromStrings(new String[] {
-    "\000\120\000\006\003\006\004\010\001\002\000\004\002" +
-    "\122\001\002\000\006\003\051\006\052\001\002\000\010" +
-    "\003\ufffc\006\ufffc\023\046\001\002\000\004\005\020\001" +
-    "\002\000\010\003\011\013\012\014\013\001\002\000\004" +
-    "\023\016\001\002\000\004\023\015\001\002\000\004\023" +
-    "\014\001\002\000\004\005\ufffa\001\002\000\004\005\ufffb" +
-    "\001\002\000\004\005\ufff9\001\002\000\010\003\ufffe\006" +
-    "\ufffe\012\041\001\002\000\006\003\021\020\022\001\002" +
-    "\000\004\023\037\001\002\000\006\011\025\022\023\001" +
-    "\002\000\006\025\035\026\033\001\002\000\006\021\ufff5" +
+    "\000\125\000\006\003\006\004\010\001\002\000\004\002" +
+    "\127\001\002\000\010\003\053\006\055\010\054\001\002" +
+    "\000\012\003\ufffc\006\ufffc\010\ufffc\023\047\001\002\000" +
+    "\006\005\022\012\021\001\002\000\010\003\011\013\012" +
+    "\014\013\001\002\000\004\023\016\001\002\000\004\023" +
+    "\015\001\002\000\004\023\014\001\002\000\006\005\ufffa" +
+    "\012\ufffa\001\002\000\006\005\ufffb\012\ufffb\001\002\000" +
+    "\006\005\ufff9\012\ufff9\001\002\000\010\003\ufffd\006\ufffd" +
+    "\010\ufffd\001\002\000\004\005\022\001\002\000\006\003" +
+    "\043\026\042\001\002\000\006\003\023\020\024\001\002" +
+    "\000\004\023\041\001\002\000\006\011\027\022\025\001" +
+    "\002\000\006\025\037\026\035\001\002\000\006\021\ufff5" +
     "\024\ufff5\001\002\000\010\017\ufff1\021\ufff1\024\ufff1\001" +
-    "\002\000\006\021\030\024\027\001\002\000\006\011\025" +
-    "\022\023\001\002\000\004\023\031\001\002\000\010\003" +
-    "\ufff8\006\ufff8\012\ufff8\001\002\000\006\021\ufff6\024\ufff6" +
-    "\001\002\000\016\003\ufff3\015\ufff3\016\ufff3\022\ufff3\023" +
-    "\ufff3\024\ufff3\001\002\000\004\022\036\001\002\000\016" +
-    "\003\ufff4\015\ufff4\016\ufff4\022\ufff4\023\ufff4\024\ufff4\001" +
-    "\002\000\010\017\ufff2\021\ufff2\024\ufff2\001\002\000\010" +
-    "\003\ufff7\006\ufff7\012\ufff7\001\002\000\006\003\ufffd\006" +
-    "\ufffd\001\002\000\006\003\043\026\042\001\002\000\004" +
-    "\023\045\001\002\000\004\023\044\001\002\000\006\003" +
-    "\uffd8\006\uffd8\001\002\000\006\003\uffd9\006\uffd9\001\002" +
-    "\000\004\002\uffff\001\002\000\014\003\uffef\007\uffef\010" +
-    "\114\025\uffef\026\uffef\001\002\000\012\003\uffe6\007\uffe6" +
-    "\025\035\026\033\001\002\000\012\003\uffee\007\uffee\025" +
-    "\uffee\026\uffee\001\002\000\010\003\054\025\035\026\033" +
-    "\001\002\000\004\023\056\001\002\000\004\023\055\001" +
-    "\002\000\014\003\uffea\007\uffea\010\uffea\025\uffea\026\uffea" +
-    "\001\002\000\014\003\uffeb\007\uffeb\010\uffeb\025\uffeb\026" +
-    "\uffeb\001\002\000\012\003\uffe7\007\uffe7\025\035\026\033" +
-    "\001\002\000\004\015\076\001\002\000\012\003\uffe4\007" +
-    "\uffe4\025\uffe4\026\uffe4\001\002\000\006\003\064\007\066" +
-    "\001\002\000\004\002\000\001\002\000\004\002\uffde\001" +
-    "\002\000\004\002\uffdf\001\002\000\010\003\070\025\035" +
-    "\026\033\001\002\000\006\023\uffda\024\uffda\001\002\000" +
-    "\004\023\075\001\002\000\006\023\073\024\072\001\002" +
-    "\000\006\025\035\026\033\001\002\000\004\002\uffdd\001" +
-    "\002\000\006\023\uffdb\024\uffdb\001\002\000\004\002\uffdc" +
-    "\001\002\000\006\025\035\026\033\001\002\000\006\003" +
-    "\100\016\101\001\002\000\004\023\110\001\002\000\006" +
-    "\011\025\022\023\001\002\000\006\017\uffe0\024\uffe0\001" +
-    "\002\000\006\017\105\024\104\001\002\000\006\011\025" +
-    "\022\023\001\002\000\004\023\106\001\002\000\012\003" +
-    "\uffe3\007\uffe3\025\uffe3\026\uffe3\001\002\000\006\017\uffe1" +
-    "\024\uffe1\001\002\000\012\003\uffe2\007\uffe2\025\uffe2\026" +
-    "\uffe2\001\002\000\012\003\uffe5\007\uffe5\025\uffe5\026\uffe5" +
-    "\001\002\000\014\003\uffec\007\uffec\010\uffec\025\uffec\026" +
-    "\uffec\001\002\000\014\003\ufff0\007\ufff0\010\114\025\ufff0" +
-    "\026\ufff0\001\002\000\010\003\116\025\035\026\033\001" +
-    "\002\000\004\023\120\001\002\000\004\023\117\001\002" +
-    "\000\014\003\uffe8\007\uffe8\010\uffe8\025\uffe8\026\uffe8\001" +
-    "\002\000\014\003\uffe9\007\uffe9\010\uffe9\025\uffe9\026\uffe9" +
-    "\001\002\000\014\003\uffed\007\uffed\010\uffed\025\uffed\026" +
-    "\uffed\001\002\000\004\002\001\001\002" });
+    "\002\000\006\021\032\024\031\001\002\000\006\011\027" +
+    "\022\025\001\002\000\004\023\033\001\002\000\010\003" +
+    "\ufff8\006\ufff8\010\ufff8\001\002\000\006\021\ufff6\024\ufff6" +
+    "\001\002\000\020\003\ufff3\015\ufff3\016\ufff3\021\ufff3\022" +
+    "\ufff3\023\ufff3\024\ufff3\001\002\000\004\022\040\001\002" +
+    "\000\020\003\ufff4\015\ufff4\016\ufff4\021\ufff4\022\ufff4\023" +
+    "\ufff4\024\ufff4\001\002\000\010\017\ufff2\021\ufff2\024\ufff2" +
+    "\001\002\000\010\003\ufff7\006\ufff7\010\ufff7\001\002\000" +
+    "\004\023\045\001\002\000\004\023\044\001\002\000\004" +
+    "\005\uffd8\001\002\000\004\005\uffd9\001\002\000\010\003" +
+    "\ufffe\006\ufffe\010\ufffe\001\002\000\004\002\uffff\001\002" +
+    "\000\006\003\uffef\007\uffef\001\002\000\004\006\055\001" +
+    "\002\000\006\003\074\007\076\001\002\000\006\003\uffee" +
+    "\007\uffee\001\002\000\006\003\062\020\063\001\002\000" +
+    "\010\003\057\025\037\026\035\001\002\000\004\023\061" +
+    "\001\002\000\004\023\060\001\002\000\006\003\uffec\007" +
+    "\uffec\001\002\000\006\003\uffed\007\uffed\001\002\000\004" +
+    "\023\072\001\002\000\006\025\037\026\035\001\002\000" +
+    "\006\021\uffe8\024\uffe8\001\002\000\006\021\067\024\066" +
+    "\001\002\000\006\025\037\026\035\001\002\000\004\023" +
+    "\070\001\002\000\004\006\uffeb\001\002\000\006\021\uffe9" +
+    "\024\uffe9\001\002\000\004\006\uffea\001\002\000\010\002" +
+    "\uffe6\025\037\026\035\001\002\000\010\002\uffde\025\uffde" +
+    "\026\uffde\001\002\000\010\002\uffdf\025\uffdf\026\uffdf\001" +
+    "\002\000\010\003\100\025\037\026\035\001\002\000\006" +
+    "\023\uffda\024\uffda\001\002\000\004\023\105\001\002\000" +
+    "\006\023\103\024\102\001\002\000\006\025\037\026\035" +
+    "\001\002\000\010\002\uffdd\025\uffdd\026\uffdd\001\002\000" +
+    "\006\023\uffdb\024\uffdb\001\002\000\010\002\uffdc\025\uffdc" +
+    "\026\uffdc\001\002\000\010\002\uffe7\025\037\026\035\001" +
+    "\002\000\004\015\112\001\002\000\010\002\uffe4\025\uffe4" +
+    "\026\uffe4\001\002\000\004\002\000\001\002\000\006\025" +
+    "\037\026\035\001\002\000\006\003\114\016\115\001\002" +
+    "\000\004\023\124\001\002\000\006\011\027\022\025\001" +
+    "\002\000\006\017\uffe0\024\uffe0\001\002\000\006\017\121" +
+    "\024\120\001\002\000\006\011\027\022\025\001\002\000" +
+    "\004\023\122\001\002\000\010\002\uffe3\025\uffe3\026\uffe3" +
+    "\001\002\000\006\017\uffe1\024\uffe1\001\002\000\010\002" +
+    "\uffe2\025\uffe2\026\uffe2\001\002\000\010\002\uffe5\025\uffe5" +
+    "\026\uffe5\001\002\000\006\003\ufff0\007\ufff0\001\002\000" +
+    "\004\002\001\001\002" });
 
   /** Access to parse-action table. */
   public short[][] action_table() {return _action_table;}
@@ -116,36 +116,38 @@ public class Parser extends java_cup.runtime.lr_parser {
   /** <code>reduce_goto</code> table. */
   protected static final short[][] _reduce_table = 
     unpackFromStrings(new String[] {
-    "\000\120\000\010\002\003\003\004\007\006\001\001\000" +
-    "\002\001\001\000\006\004\047\012\046\001\001\000\002" +
-    "\001\001\000\004\010\016\001\001\000\002\001\001\000" +
+    "\000\125\000\010\002\003\003\004\007\006\001\001\000" +
+    "\002\001\001\000\010\004\051\012\047\014\050\001\001" +
+    "\000\002\001\001\000\006\010\016\015\017\001\001\000" +
     "\002\001\001\000\002\001\001\000\002\001\001\000\002" +
-    "\001\001\000\002\001\001\000\002\001\001\000\004\015" +
-    "\037\001\001\000\002\001\001\000\002\001\001\000\006" +
-    "\016\025\020\023\001\001\000\004\024\033\001\001\000" +
-    "\002\001\001\000\002\001\001\000\002\001\001\000\004" +
-    "\020\031\001\001\000\002\001\001\000\002\001\001\000" +
-    "\002\001\001\000\002\001\001\000\002\001\001\000\002" +
+    "\001\001\000\002\001\001\000\002\001\001\000\002\001" +
+    "\001\000\002\001\001\000\004\010\045\001\001\000\002" +
+    "\001\001\000\002\001\001\000\002\001\001\000\006\016" +
+    "\027\020\025\001\001\000\004\024\035\001\001\000\002" +
+    "\001\001\000\002\001\001\000\002\001\001\000\004\020" +
+    "\033\001\001\000\002\001\001\000\002\001\001\000\002" +
     "\001\001\000\002\001\001\000\002\001\001\000\002\001" +
     "\001\000\002\001\001\000\002\001\001\000\002\001\001" +
     "\000\002\001\001\000\002\001\001\000\002\001\001\000" +
-    "\006\014\111\022\112\001\001\000\012\005\061\011\060" +
-    "\023\056\024\057\001\001\000\002\001\001\000\004\024" +
-    "\052\001\001\000\002\001\001\000\002\001\001\000\002" +
-    "\001\001\000\002\001\001\000\006\011\110\024\057\001" +
-    "\001\000\002\001\001\000\002\001\001\000\006\006\062" +
-    "\013\064\001\001\000\002\001\001\000\002\001\001\000" +
-    "\002\001\001\000\006\017\070\024\066\001\001\000\002" +
-    "\001\001\000\002\001\001\000\002\001\001\000\004\024" +
-    "\073\001\001\000\002\001\001\000\002\001\001\000\002" +
-    "\001\001\000\004\024\076\001\001\000\002\001\001\000" +
-    "\002\001\001\000\006\020\101\021\102\001\001\000\002" +
-    "\001\001\000\002\001\001\000\004\020\106\001\001\000" +
-    "\002\001\001\000\002\001\001\000\002\001\001\000\002" +
-    "\001\001\000\002\001\001\000\002\001\001\000\004\014" +
-    "\120\001\001\000\004\024\114\001\001\000\002\001\001" +
+    "\002\001\001\000\002\001\001\000\002\001\001\000\004" +
+    "\012\125\001\001\000\006\006\072\013\074\001\001\000" +
+    "\002\001\001\000\002\001\001\000\004\024\055\001\001" +
     "\000\002\001\001\000\002\001\001\000\002\001\001\000" +
-    "\002\001\001\000\002\001\001" });
+    "\002\001\001\000\002\001\001\000\006\022\064\024\063" +
+    "\001\001\000\002\001\001\000\002\001\001\000\004\024" +
+    "\070\001\001\000\002\001\001\000\002\001\001\000\002" +
+    "\001\001\000\002\001\001\000\012\005\110\011\107\023" +
+    "\105\024\106\001\001\000\002\001\001\000\002\001\001" +
+    "\000\006\017\100\024\076\001\001\000\002\001\001\000" +
+    "\002\001\001\000\002\001\001\000\004\024\103\001\001" +
+    "\000\002\001\001\000\002\001\001\000\002\001\001\000" +
+    "\006\011\124\024\106\001\001\000\002\001\001\000\002" +
+    "\001\001\000\002\001\001\000\004\024\112\001\001\000" +
+    "\002\001\001\000\002\001\001\000\006\020\115\021\116" +
+    "\001\001\000\002\001\001\000\002\001\001\000\004\020" +
+    "\122\001\001\000\002\001\001\000\002\001\001\000\002" +
+    "\001\001\000\002\001\001\000\002\001\001\000\002\001" +
+    "\001\000\002\001\001" });
 
   /** Access to <code>reduce_goto</code> table. */
   public short[][] reduce_table() {return _reduce_table;}
@@ -191,6 +193,16 @@ public class Parser extends java_cup.runtime.lr_parser {
     private Token tokenActual = null;
     private String automatonType = null;
     private String initialState = null;
+    // Structural section tracking — used for order-error detection in syntax_error
+    public boolean seenAlphabet = false;
+    public boolean seenFinal    = false;
+
+    // Transition context tracked token-by-token for error message reconstruction
+    private boolean expectingTransitionDest = false;
+    public boolean inTransitionBrackets = false;
+    public String pendingTransitionOrigin = null;
+    public String pendingTransitionDest = null;
+    public java.util.List<String> pendingTransitionSymbols = new java.util.ArrayList<>();
 
     @Override
     public Symbol scan() throws java.lang.Exception {
@@ -198,6 +210,25 @@ public class Parser extends java_cup.runtime.lr_parser {
         if (sym != null && sym.value instanceof Token) {
             tokenAnterior = tokenActual;
             tokenActual = (Token) sym.value;
+            String comp = tokenActual.getLexicalComp();
+            if ("FLECHA".equals(comp)) {
+                pendingTransitionOrigin = (tokenAnterior != null) ? tokenAnterior.getLexeme() : null;
+                pendingTransitionDest = null;
+                pendingTransitionSymbols.clear();
+                expectingTransitionDest = true;
+            } else if (expectingTransitionDest
+                    && ("IDENTIFICADOR".equals(comp) || "COLOR".equals(comp))) {
+                pendingTransitionDest = tokenActual.getLexeme();
+                expectingTransitionDest = false;
+            } else if ("CORCHETE_IZQ".equals(comp)) {
+                pendingTransitionSymbols.clear();
+                inTransitionBrackets = true;
+            } else if ("CORCHETE_DER".equals(comp)) {
+                inTransitionBrackets = false;
+            } else if ("LLAVE_IZQ".equals(comp)) {
+                inTransitionBrackets = false;
+                pendingTransitionSymbols.clear();
+            }
         }
         return sym;
     }
@@ -208,18 +239,36 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void syntax_error(Symbol s) {
         Token t = (Token) s.value;
-        Token ref = (t != null) ? t : tokenAnterior;
-        // E1: suppress cascading errors — if the last reported error is on the same line, skip
-        if (ref != null && !errors.isEmpty()) {
-            int lastLine = errors.get(errors.size() - 1).getLine();
-            if (lastLine > 0 && lastLine == ref.getLine()) return;
-        }
+        // Con el gutter corregido (1-indexed), el token anterior (último aceptado)
+        // apunta a la línea del error; ya no se necesita compensar con el lookahead.
+        Token ref = (tokenAnterior != null) ? tokenAnterior : t;
         String lexActual    = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String lexAnterior  = (tokenAnterior != null) ? tokenAnterior.getLexeme() : "";
 
         String mensaje;
+        // ── Orden estructural y duplicados (antes del switch de contexto) ─────────
+        if ("TIPO".equals(compActual) && automatonType != null) {
+            mensaje = "[SinError 021] El tipo de autómata ya fue declarado como '"
+                    + automatonType + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo debe haber un TIPO al inicio del programa.";
+        } else if ("INICIO".equals(compActual) && initialState != null) {
+            mensaje = "[SinError 022] El estado inicial ya fue declarado como '"
+                    + initialState + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo puede haber un INICIO.";
+        } else if ("FINAL".equals(compActual) && seenFinal) {
+            mensaje = "[SinError 010] FINAL ya fue declarado. | ✏ Elimina la declaración duplicada de FINAL.";
+        } else if ("ALFABETO".equals(compActual) && seenAlphabet) {
+            mensaje = "[SinError 010] ALFABETO declarado más de una vez. | ✏ Solo debe haber un ALFABETO en el programa.";
+        } else if ("FINAL".equals(compActual) && initialState == null) {
+            mensaje = "[SinError 010] FINAL aparece antes de INICIO. | ✏ Orden: [ESTADOS { ... };]  INICIO q0;  FINAL q2;";
+        } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual))
+                   && initialState != null && !seenFinal) {
+            // Token de inicio de transición donde se esperaba FINAL
+            mensaje = "[SinError 010] Se esperaba FINAL antes de las transiciones, pero se encontró '"
+                    + lexActual + "'. | ✏ Agrega primero: FINAL q2;  (luego escribe las transiciones)";
+        } else
         switch (compAnterior) {
             case "TIPO":
                 mensaje = "[SinError 010] Después de TIPO se esperaba AFD o AFN, pero se encontró '"
@@ -228,17 +277,29 @@ public class Parser extends java_cup.runtime.lr_parser {
                 mensaje = "[SinError 010] Después de ALFABETO se esperaba '{', pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
             case "LLAVE_IZQ":
-                mensaje = "[SinError 010] Dentro de '{...}' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+                if (seenAlphabet) {
+                    mensaje = "[SinError 010] Dentro de 'ESTADOS { ... }' se esperaba un nombre de estado, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
+                } else {
+                    mensaje = "[SinError 010] Dentro de 'ALFABETO { ... }' se esperaba un símbolo o EPSILON, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                }
+                break;
             case "LLAVE_DER":
-                mensaje = "[SinError 010] Después de '}' se esperaba ';', pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };"; break;
+                if (seenAlphabet) {
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
+                } else {
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                }
+                break;
             case "INICIO":
                 mensaje = "[SinError 010] Después de INICIO se esperaba el nombre del estado inicial, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: INICIO q0;"; break;
-            case "ESTADO":
-                mensaje = "[SinError 010] Después de ESTADO se esperaba el nombre del estado, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: ESTADO q1;"; break;
+            case "ESTADOS":
+                mensaje = "[SinError 010] Después de ESTADOS se esperaba '{', pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2 };"; break;
             case "FINAL":
                 mensaje = "[SinError 010] Después de FINAL se esperaba el nombre del estado final, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;"; break;
@@ -253,13 +314,45 @@ public class Parser extends java_cup.runtime.lr_parser {
                         + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
             case "CORCHETE_DER":
                 mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
+                        + lexActual + "'. | ✏ Correcto: "
+                        + (pendingTransitionOrigin != null && pendingTransitionDest != null
+                           && !pendingTransitionSymbols.isEmpty()
+                            ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                              + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                            : "q0 -> q1 ['símbolo'];");
+                break;
             case "COMA":
-                mensaje = "[SinError 010] Después de ',' se esperaba otro elemento, pero se encontró '"
-                        + lexActual + "'. | ✏ Ej: ALFABETO { 'a', 'b' };  ó  FINAL q1, q2;"; break;
+                if (!seenAlphabet) {
+                    // Dentro de ALFABETO { ... } — ALFABETO aún no completado
+                    mensaje = "[SinError 010] Después de ',' en ALFABETO se esperaba otro símbolo, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                } else if (initialState == null) {
+                    // Dentro de ESTADOS { ... } — INICIO todavía no declarado
+                    mensaje = "[SinError 010] Después de ',' en ESTADOS se esperaba otro nombre de estado, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, q3 };";
+                } else {
+                    // Dentro de FINAL q1, ... — INICIO ya declarado, seenFinal aún false
+                    mensaje = "[SinError 010] Después de ',' en FINAL se esperaba otro estado final, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: FINAL q1, q2;";
+                }
+                break;
             case "COMILLA_SIMPLE":
-                mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'"; break;
+                // Closing ' of a symbol; if next token starts a new statement it means ] was forgotten
+                if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)
+                        || "INICIO".equals(compActual) || "ESTADOS".equals(compActual)
+                        || "FINAL".equals(compActual)  || "TIPO".equals(compActual)
+                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)) {
+                    String missClose = (pendingTransitionOrigin != null && pendingTransitionDest != null
+                                        && !pendingTransitionSymbols.isEmpty())
+                        ? pendingTransitionOrigin + " -> " + pendingTransitionDest
+                          + " [" + String.join(", ", pendingTransitionSymbols) + "];"
+                        : "q0 -> q1 ['símbolo'];";
+                    mensaje = "[SinError 010] Falta el corchete de cierre ']' después del símbolo. | ✏ Correcto: " + missClose;
+                } else {
+                    mensaje = "[SinError 010] Se esperaba el identificador del símbolo entre comillas simples, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: 'a'  ó  'ab'";
+                }
+                break;
             case "IDENTIFICADOR": case "COLOR":
                 if ("FLECHA".equals(compActual)) {
                     mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
@@ -290,30 +383,25 @@ public class Parser extends java_cup.runtime.lr_parser {
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
-        // E3: suppress if syntax_error already reported an error on this same line
-        if (!errors.isEmpty()) {
-            int lastLine = errors.get(errors.size() - 1).getLine();
-            int thisLine = (t != null) ? t.getLine() : -1;
-            if (lastLine > 0 && lastLine == thisLine) return;
-        }
-        // Suppress if other syntax errors already explain the problem.
-        // SinError 011 at EOF only adds value when no specific error was reported.
-        boolean hasSinError = errors.stream()
-                .anyMatch(e -> e.getDescription() != null && e.getDescription().contains("SinError"));
-        if (hasSinError) return;
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String contexto;
-        if ("TIPO".equals(compAnterior) || "ALFABETO".equals(compAnterior) || "FONDO".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la sección de configuración (TIPO, ALFABETO).";
-        } else if ("INICIO".equals(compAnterior) || "ESTADO".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la declaración de estados (INICIO, ESTADO).";
-        } else if ("FLECHA".equals(compAnterior) || "CORCHETE_IZQ".equals(compAnterior) || "CORCHETE_DER".equals(compAnterior)) {
-            contexto = " | ✏ Verifica que las transiciones tengan el formato: estado -> estado ['simbolo'];";
+        if ("TIPO".equals(compAnterior) || "AFD".equals(compAnterior) || "AFN".equals(compAnterior)) {
+            contexto = " | ✏ Sección de configuración: TIPO AFD;  [FONDO color;]  ALFABETO { 'a', 'b' };";
+        } else if ("FONDO".equals(compAnterior) || "COLOR".equals(compAnterior)) {
+            contexto = " | ✏ Después de FONDO va el alfabeto: FONDO gris;  ALFABETO { 'a', 'b' };";
+        } else if ("ALFABETO".equals(compAnterior) || "LLAVE_IZQ".equals(compAnterior) || "LLAVE_DER".equals(compAnterior)) {
+            contexto = " | ✏ Después de ALFABETO van los estados: ALFABETO { 'a' };  [ESTADOS { q1 };]  INICIO q0;";
+        } else if ("ESTADOS".equals(compAnterior)) {
+            contexto = " | ✏ Después de ESTADOS va INICIO: ESTADOS { q1, q2 };  INICIO q0;";
+        } else if ("INICIO".equals(compAnterior)) {
+            contexto = " | ✏ Después de INICIO va FINAL: INICIO q0;  FINAL q2;";
         } else if ("FINAL".equals(compAnterior)) {
-            contexto = " | ✏ Verifica la declaración de estados finales: FINAL q2;";
+            contexto = " | ✏ Después de FINAL van las transiciones: FINAL q2;  q0 -> q1 ['a'];";
+        } else if ("FLECHA".equals(compAnterior) || "CORCHETE_IZQ".equals(compAnterior) || "CORCHETE_DER".equals(compAnterior)) {
+            contexto = " | ✏ Formato de transición: q0 -> q1 ['símbolo'];";
         } else {
-            contexto = " | ✏ Revisa la estructura general del programa.";
+            contexto = " | ✏ Orden del programa: TIPO, [FONDO,] ALFABETO, [ESTADOS,] INICIO, FINAL, transiciones.";
         }
         errors.add(new ErrorLSSL(1, "[SinError 011] Error no recuperable cerca de '" + lexema + "'." + contexto, t));
     }
@@ -358,7 +446,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 1: // Program ::= ConfigSection StateDeclarationSection TransitionSection AcceptanceSection 
+          case 1: // Program ::= ConfigSection StateDeclarationSection AcceptanceSection TransitionSection 
             {
               ASTNode RESULT =null;
 		int cfgleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)).left;
@@ -367,18 +455,18 @@ class CUP$Parser$actions {
 		int stsleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
 		int stsright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
 		ASTNode sts = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-		int trsleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
-		int trsright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
-		ASTNode trs = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
-		int accleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int accright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		ASTNode acc = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		 
+		int accleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
+		int accright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
+		ASTNode acc = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		int trsleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int trsright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		ASTNode trs = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		
         ASTNode root = new ASTNode("AutomataDSL_Program");
         root.addChild(cfg);
         root.addChild(sts);
-        root.addChild(trs);
         root.addChild(acc);
+        root.addChild(trs);
         RESULT = root;
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -390,7 +478,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 100] Estructura de programa mal formada. | ✏ Verifica que el programa tenga: TIPO, ALFABETO, estados, transiciones y FINAL.", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 023] Estructura de programa mal formada. | ✏ Orden correcto: TIPO, [FONDO,] ALFABETO, [ESTADOS,] INICIO, FINAL, transiciones.", null));
         RESULT = new ASTNode("Error_Program");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -398,7 +486,31 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 3: // ConfigSection ::= ConfigType AlphabetDef 
+          case 3: // ConfigSection ::= ConfigType BackgroundDef AlphabetDef 
+            {
+              ASTNode RESULT =null;
+		int ctleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
+		int ctright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
+		ASTNode ct = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
+		int bgleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
+		int bgright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
+		ASTNode bg = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		int ableft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int abright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		ASTNode ab = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		
+        ASTNode node = new ASTNode("Config_Section");
+        node.addChild(ct);
+        node.addChild(bg);
+        node.addChild(ab);
+        RESULT = node;
+    
+              CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
+            }
+          return CUP$Parser$result;
+
+          /*. . . . . . . . . . . . . . . . . . . .*/
+          case 4: // ConfigSection ::= ConfigType AlphabetDef 
             {
               ASTNode RESULT =null;
 		int ctleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
@@ -418,35 +530,11 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 4: // ConfigSection ::= ConfigType AlphabetDef BackgroundDef 
-            {
-              ASTNode RESULT =null;
-		int ctleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
-		int ctright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
-		ASTNode ct = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-		int ableft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
-		int abright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
-		ASTNode ab = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
-		int bgleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int bgright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		ASTNode bg = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		
-        ASTNode node = new ASTNode("Config_Section");
-        node.addChild(ct);
-        node.addChild(ab);
-        node.addChild(bg);
-        RESULT = node;
-    
-              CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
-            }
-          return CUP$Parser$result;
-
-          /*. . . . . . . . . . . . . . . . . . . .*/
           case 5: // ConfigSection ::= error 
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 101] Falta TIPO y ALFABETO al inicio del programa. | ✏ El programa debe comenzar con: TIPO AFD;  ALFABETO { 'a', 'b' };", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 024] Falta la sección de configuración al inicio del programa. | ✏ Estructura: TIPO AFD;  [FONDO color;]  ALFABETO { 'a', 'b' };", null));
         RESULT = new ASTNode("Error_Config");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -490,6 +578,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		 
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -503,7 +592,8 @@ class CUP$Parser$actions {
 		int slleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
 		int slright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
 		ASTNode sl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-		 
+		
+        parser.seenAlphabet = true;
         ASTNode node = new ASTNode("AlphabetDefinition");
         node.addChild(sl);
         RESULT = node;
@@ -517,6 +607,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 013] ALFABETO debe ir: ALFABETO { 'a', 'b', ... };", tokenAnterior));
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AlphabetDef",6, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -591,6 +682,8 @@ class CUP$Parser$actions {
 		
         Token t = (Token)id;
         parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("'" + t.getLexeme() + "'");
         RESULT = new ASTNode("Symbol", t.getLexeme());
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -606,6 +699,8 @@ class CUP$Parser$actions {
 		Object e = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
+        if (parser.inTransitionBrackets)
+            parser.pendingTransitionSymbols.add("EPSILON");
         RESULT = new ASTNode("Symbol", "EPSILON");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("SymbolVal",14, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -613,19 +708,19 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 17: // StateDeclarationSection ::= StartDef StateDeclarationList 
+          case 17: // StateDeclarationSection ::= StateDef StartDef 
             {
               ASTNode RESULT =null;
-		int sleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
-		int sright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
-		ASTNode s = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
-		int sdlleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int sdlright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		ASTNode sdl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		int sdleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
+		int sdright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
+		ASTNode sd = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		int sleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int sright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		ASTNode s = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
         ASTNode node = new ASTNode("State_Declaration_Section");
+        node.addChild(sd);
         node.addChild(s);
-        node.addChild(sdl);
         RESULT = node;
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDeclarationSection",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -653,7 +748,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 102] Falta INICIO <estado>;", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 025] Falta la declaración del estado inicial. | ✏ Agrega después de ALFABETO/ESTADOS: INICIO q0;", null));
         RESULT = new ASTNode("State_Declaration_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDeclarationSection",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -661,41 +756,7 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 20: // StateDeclarationList ::= StateDeclarationList StateDef 
-            {
-              ASTNode RESULT =null;
-		int sdlleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
-		int sdlright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
-		ASTNode sdl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
-		int stleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int stright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		ASTNode st = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		
-        sdl.addChild(st);
-        RESULT = sdl;
-    
-              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDeclarationList",16, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
-            }
-          return CUP$Parser$result;
-
-          /*. . . . . . . . . . . . . . . . . . . .*/
-          case 21: // StateDeclarationList ::= StateDef 
-            {
-              ASTNode RESULT =null;
-		int stleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
-		int stright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
-		ASTNode st = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		
-        ASTNode node = new ASTNode("StateList");
-        node.addChild(st);
-        RESULT = node;
-    
-              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDeclarationList",16, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
-            }
-          return CUP$Parser$result;
-
-          /*. . . . . . . . . . . . . . . . . . . .*/
-          case 22: // StartDef ::= INICIO Ident PUNTO_Y_COMA 
+          case 20: // StartDef ::= INICIO Ident PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
 		int idleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
@@ -712,10 +773,11 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 23: // StartDef ::= INICIO error PUNTO_Y_COMA 
+          case 21: // StartDef ::= INICIO error PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -723,29 +785,68 @@ class CUP$Parser$actions {
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 24: // StateDef ::= ESTADO Ident PUNTO_Y_COMA 
+          case 22: // StateDef ::= ESTADOS LLAVE_IZQ StateNameList LLAVE_DER PUNTO_Y_COMA 
             {
               ASTNode RESULT =null;
-		int idleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).left;
-		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
-		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
+		int slleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
+		int slright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
+		ASTNode sl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
 		
-        Token t = (Token)id;
-        parser.addSymbol(t.getLexeme(), "State_Declared", t);
-        RESULT = new ASTNode("StateDecl", t.getLexeme());
+        ASTNode node = new ASTNode("StateDeclList");
+        node.addChild(sl);
+        RESULT = node;
+    
+              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
+            }
+          return CUP$Parser$result;
+
+          /*. . . . . . . . . . . . . . . . . . . .*/
+          case 23: // StateDef ::= ESTADOS error PUNTO_Y_COMA 
+            {
+              ASTNode RESULT =null;
+		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato incorrecto. | ✏ Correcto: ESTADOS { q1, q2, ... };", tokenAnterior));
+        RESULT = new ASTNode("StateDeclList", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
           /*. . . . . . . . . . . . . . . . . . . .*/
-          case 25: // StateDef ::= ESTADO error PUNTO_Y_COMA 
+          case 24: // StateNameList ::= StateNameList COMA Ident 
             {
               ASTNode RESULT =null;
+		int slleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
+		int slright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
+		ASTNode sl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
+		int idleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
 		
-        RESULT = new ASTNode("StateDecl", "ERROR");
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "State_Declared", t);
+        sl.addChild(new ASTNode("StateDecl", t.getLexeme()));
+        RESULT = sl;
     
-              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
+              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateNameList",16, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
+            }
+          return CUP$Parser$result;
+
+          /*. . . . . . . . . . . . . . . . . . . .*/
+          case 25: // StateNameList ::= Ident 
+            {
+              ASTNode RESULT =null;
+		int idleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
+		int idright = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
+		Object id = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
+		
+        Token t = (Token)id;
+        parser.addSymbol(t.getLexeme(), "State_Declared", t);
+        ASTNode node = new ASTNode("StateNameList");
+        node.addChild(new ASTNode("StateDecl", t.getLexeme()));
+        RESULT = node;
+    
+              CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateNameList",16, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
 
@@ -847,20 +948,16 @@ class CUP$Parser$actions {
 		int destinoleft = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).left;
 		int destinoright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)).right;
 		Object destino = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-2)).value;
-
-        // E5: replace the generic SinError 010 on this line with a transition-specific message
-        Token tOri = (origen instanceof Token) ? (Token)origen : null;
-        Token tDes = (destino instanceof Token) ? (Token)destino : null;
-        if (tOri != null && !parser.errors.isEmpty()) {
-            int lastLine = parser.errors.get(parser.errors.size() - 1).getLine();
-            if (lastLine > 0 && lastLine == tOri.getLine())
-                parser.errors.remove(parser.errors.size() - 1);
+		
+        Token tOri = (Token)origen;
+        int orLine = tOri.getLine();
+        // Suppress if syntax_error already reported a problem on a nearby line
+        // (this production fires as cascade recovery of the same broken transition)
+        boolean alreadyReported = !parser.errors.isEmpty() &&
+            Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
+        if (!alreadyReported) {
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
         }
-        String oriName = tOri != null ? tOri.getLexeme() : "?";
-        String desName = tDes != null ? tDes.getLexeme() : "?";
-        parser.errors.add(new ErrorLSSL(1,
-            "[SinError 014] Transición mal formada: " + oriName + " -> " + desName + " [símbolo];  | ✏ Correcto: " + oriName + " -> " + desName + " ['a'];",
-            tOri));
         RESULT = new ASTNode("Transition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Transition",7, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-4)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -922,7 +1019,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 103] Falta la declaración de estados finales. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 026] Falta la declaración de estados finales. | ✏ Agrega antes de las transiciones: FINAL q2;  ó  FINAL q1, q2;", null));
         RESULT = new ASTNode("Acceptance_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AcceptanceSection",4, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -937,6 +1034,7 @@ class CUP$Parser$actions {
 		int slright = ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)).right;
 		ASTNode sl = (ASTNode)((java_cup.runtime.Symbol) CUP$Parser$stack.elementAt(CUP$Parser$top-1)).value;
 		
+        parser.seenFinal = true;
         ASTNode node = new ASTNode("FinalStates");
         node.addChild(sl);
         RESULT = node;
@@ -950,6 +1048,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("FinalDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -1015,6 +1114,9 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
+        parser.errors.add(new ErrorLSSL(1,
+            "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+            tokenAnterior));
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",11, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);

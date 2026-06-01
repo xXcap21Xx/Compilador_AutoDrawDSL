@@ -1,17 +1,18 @@
 /* 1. SECCION DE CONFIGURACION */
 TIPO AFD;
-ALFABETO { 'a', 'b' };
 FONDO gris;
-/* 2. SECCION DE ESTADOS */
+/* 2. DEFINICION DEL ALFABETO */
+ALFABETO { 'a', 'b' };
+/* 3. SECCION DE ESTADOS */
+ESTADOS{q0,q1,q2};
+/* 4. ESTADO DE INICIO */
 INICIO q0;
-ESTADO q1;
-ESTADO q2;
-/* 3. SECCION DE TRANSICIONES */
+/* 5. ESTADO FINAL */
+FINAL q2;
+/* 4. SECCION DE TRANSICIONES */
 q0 -> q0 ['a'];
 q0 -> q1 ['b'];
 q1 -> q0 ['a'];
 q1 -> q2 ['b'];
 q2 -> q0 ['a'];
 q2 -> q2 ['b'];
-/* 4. SECCION DE ACEPTACION */
-FINAL q2;

@@ -38,6 +38,32 @@ import javax.swing.table.DefaultTableModel;
  */
 public class Compilador extends javax.swing.JFrame {
 
+    /**
+     * Offsets entre el número de línea reportado por los tokens del lexer y la
+     * línea visible en el editor (gutter), y entre ese número y el índice de
+     * elemento del Document de JTextPane.
+     *
+     * Causa raíz identificada:
+     *   JFlex cuenta líneas con yyline (base 0) y el Lexer suma +1 → getLine()
+     *   es 1-indexed y coincide directamente con el gutter correcto.
+     *   El gutter propio (inicializarNumeradorLineas) muestra elemento N como
+     *   línea N+1, por lo que: gutter = getLine() → TOKEN_LINE_OFFSET = 0.
+     *
+     *   getDefaultRootElement().getElement(N) es 0-indexed; para la línea L
+     *   (1-indexed) el elemento es L-1 → DOC_ELEM_OFFSET = 1.
+     *
+     *   Nota histórica: compilerTools.Functions.setLineNumberOnJTextComponent
+     *   tenía un bug de +2 en la numeración (mostraba elemento N como línea N+2,
+     *   arrancaba en 3 y omitía la última línea). Los offsets anteriores eran 1 y 2
+     *   para compensarlo; al reemplazar el gutter por uno correcto se normalizan a 0 y 1.
+     *
+     * Reglas de uso:
+     *   errorLine  = token.getLine() + TOKEN_LINE_OFFSET   → número para mostrar
+     *   elemIdx    = errorLine       - DOC_ELEM_OFFSET      → índice de Document
+     */
+    private static final int TOKEN_LINE_OFFSET = 0;
+    private static final int DOC_ELEM_OFFSET   = 1;
+
     private String title;
     private Directory Directorio;
     private ArrayList<Token> tokens;
@@ -68,7 +94,7 @@ public class Compilador extends javax.swing.JFrame {
                 System.exit(0);
             }
         });
-        Functions.setLineNumberOnJTextComponent(panel_Codigo, jScrollPane1);
+        inicializarNumeradorLineas();
         timerKeyReleased = new Timer((int) (1000 * 0.3), (ActionEvent e) -> {
             timerKeyReleased.stop();
             colorAnalysis();
@@ -223,7 +249,7 @@ public class Compilador extends javax.swing.JFrame {
     private void mostrarVentanaSimbolos() {
         // 1. Verificamos la lista correcta
         if (listaSimbolosGlobal == null || listaSimbolosGlobal.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "La tabla de símbolos está vacía.\nAsegúrate de compilar código que tenga declaraciones (ej. ESTADO q0; o TIPO AFD;)", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "La tabla de símbolos está vacía.\nAsegúrate de compilar código que tenga declaraciones (ej. ESTADOS { q0, q1 }; o TIPO AFD;)", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -253,6 +279,65 @@ public class Compilador extends javax.swing.JFrame {
         errors.clear();
         codeHasBeenCompiled = false;
         panel_Codigo.getHighlighter().removeAllHighlights();
+    }
+
+    /** Instala un gutter de numeración de líneas correcto (1-indexed, todas las líneas). */
+    private void inicializarNumeradorLineas() {
+        javax.swing.JComponent gutter = new javax.swing.JComponent() {
+            private static final int PAD = 6;
+            {
+                setBackground(new java.awt.Color(240, 240, 240));
+                setForeground(new java.awt.Color(110, 110, 110));
+                setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 13));
+                setOpaque(true);
+                setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 0, 1,
+                        new java.awt.Color(200, 200, 200)));
+            }
+
+            @Override
+            public java.awt.Dimension getPreferredSize() {
+                int n = panel_Codigo.getDocument().getDefaultRootElement().getElementCount();
+                java.awt.FontMetrics fm = getFontMetrics(getFont());
+                int w = fm.stringWidth(String.valueOf(Math.max(n, 99))) + PAD * 2;
+                return new java.awt.Dimension(w, panel_Codigo.getHeight());
+            }
+
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                g.setColor(getBackground());
+                g.fillRect(0, 0, getWidth(), getHeight());
+                g.setColor(getForeground());
+                g.setFont(getFont());
+                java.awt.FontMetrics fm = g.getFontMetrics();
+                javax.swing.text.Element root =
+                        panel_Codigo.getDocument().getDefaultRootElement();
+                for (int i = 0, n = root.getElementCount(); i < n; i++) {
+                    try {
+                        java.awt.Rectangle r = panel_Codigo.modelToView(
+                                root.getElement(i).getStartOffset());
+                        if (r == null) continue;
+                        String num = String.valueOf(i + 1);
+                        g.drawString(num,
+                                getWidth() - fm.stringWidth(num) - PAD,
+                                r.y + fm.getAscent());
+                    } catch (javax.swing.text.BadLocationException ex) { /* skip */ }
+                }
+            }
+        };
+
+        // Repintar cuando el documento cambia
+        panel_Codigo.getDocument().addDocumentListener(
+                new javax.swing.event.DocumentListener() {
+                    public void insertUpdate (javax.swing.event.DocumentEvent e) { repaint(); }
+                    public void removeUpdate (javax.swing.event.DocumentEvent e) { repaint(); }
+                    public void changedUpdate(javax.swing.event.DocumentEvent e) { repaint(); }
+                    void repaint() { gutter.revalidate(); gutter.repaint(); }
+                });
+
+        // Sincronizar repintado al hacer scroll
+        jScrollPane1.getViewport().addChangeListener(e -> gutter.repaint());
+
+        jScrollPane1.setRowHeaderView(gutter);
     }
 
 
@@ -292,11 +377,11 @@ public class Compilador extends javax.swing.JFrame {
         if (!hasAutomatonType)
             errors.add(new ErrorLSSL(1, "[SemError 001] No se declaró el tipo de autómata. | ✏ Agrega al inicio del programa: TIPO AFD;  ó  TIPO AFN;", null));
         if (initialStates.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ALFABETO)", null));
+            errors.add(new ErrorLSSL(1, "[SemError 002] No se declaró el estado inicial. | ✏ Agrega: INICIO q0;  (debe ir después de ESTADOS o ALFABETO)", null));
         if (finalStates.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
+            errors.add(new ErrorLSSL(1, "[SemError 003] No se declaró ningún estado final. | ✏ Agrega antes de las transiciones: FINAL q2;  ó  FINAL q1, q2;", null));
         if (alphabetSymbols.isEmpty())
-            errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO)", null));
+            errors.add(new ErrorLSSL(1, "[SemError 004] No se declaró el alfabeto. | ✏ Agrega: ALFABETO { 'a', 'b' };  (después de TIPO o FONDO, antes de ESTADOS/INICIO)", null));
 
         boolean isAFD = false;
         for (SimboloDSL sym : listaSimbolosGlobal) {
@@ -312,7 +397,14 @@ public class Compilador extends javax.swing.JFrame {
         if (isAFD && transitionCount > 0)
             checkDeterminism(root);
 
-        checkUnusedStates(root, initialStates, finalStates);
+        // SemError 011 requiere un AST completo. Si hay errores sintácticos, el modo
+        // pánico del parser pudo haber descartado transiciones, haciendo que estados
+        // realmente usados aparezcan como "no usados" en el AST. Se omite en ese caso.
+        boolean hasSyntaxErrors = errors.stream().anyMatch(
+                e -> e.getDescription() != null && e.getDescription().contains("SinError"));
+        if (!hasSyntaxErrors) {
+            checkUnusedStates(root, initialStates, finalStates);
+        }
     }
 
     /** Recorre el AST hasta AlphabetDefinition y recoge sus Symbol hijos. */
@@ -350,12 +442,12 @@ public class Compilador extends javax.swing.JFrame {
             }
             Token locTok = findTransitionToken(origin, destination, counter);
             if (origin != null && !declaredStates.contains(origin)) {
-                String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrega: ESTADO " + origin + ";  (o INICIO " + origin + "; si es el estado inicial)";
+                String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrégalo en: ESTADOS { " + origin + ", ... };  (o INICIO " + origin + "; si es el estado inicial)";
                 if (reportedErrors.add(msg))
                     errors.add(new ErrorLSSL(1, msg, locTok));
             }
             if (destination != null && !declaredStates.contains(destination)) {
-                String msg = "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrega: ESTADO " + destination + ";  (antes de las transiciones)";
+                String msg = "[SemError 006] El estado destino '" + destination + "' no fue declarado. | ✏ Agrégalo en: ESTADOS { " + destination + ", ... };  (antes de las transiciones)";
                 if (reportedErrors.add(msg))
                     errors.add(new ErrorLSSL(1, msg, locTok));
             }
@@ -445,31 +537,172 @@ public class Compilador extends javax.swing.JFrame {
 
     /**
      * Detecta transiciones donde falta el ';' final y que el modo pánico del parser
-     * consumió silenciosamente. Busca CORCHETE_DER no seguido de PUNTO_Y_COMA y agrega
-     * SinError 019 por cada línea afectada que no tenga ya un error registrado.
+     * consumió silenciosamente. Para cada CORCHETE_DER que cierra una transición válida
+     * y no va seguido de PUNTO_Y_COMA, reconstruye la transición completa y agrega
+     * SinError 019 con el texto real de la línea afectada.
+     *
+     * Nota: tk.getLine() tiene un desfase de -1 respecto al número de línea visible
+     * en el editor; se compensa con +1 al crear el token de error.
      */
     private void detectMissingTransitionSemicolons() {
         Set<Integer> reportedLines = new HashSet<>();
         for (ErrorLSSL e : errors) {
             if (e.getLine() > 0) reportedLines.add(e.getLine());
         }
-        for (int i = 0; i < tokens.size() - 1; i++) {
+        for (int i = 0; i < tokens.size(); i++) {
             Token tk = tokens.get(i);
-            Token nx = tokens.get(i + 1);
             if (!"CORCHETE_DER".equals(tk.getLexicalComp())) continue;
-            if ("PUNTO_Y_COMA".equals(nx.getLexicalComp())) continue;
-            // tk.getLine() is off by -1 from the editor's displayed line number
-            // (consistent with the rest of the system: syntax_error compensates by
-            //  using the next token, which is also -1 but from the following line).
-            // We apply +1 here to report the correct editor line.
-            int errorLine = tk.getLine() + 1;
+
+            // Verificar que este ] cierra realmente una transición
+            if (!isTransitionClosingBracket(i)) continue;
+
+            // Correcto si va seguido de ;
+            boolean followedBySemicolon = (i + 1 < tokens.size())
+                    && "PUNTO_Y_COMA".equals(tokens.get(i + 1).getLexicalComp());
+            if (followedBySemicolon) continue;
+
+            int errorLine = tk.getLine() + TOKEN_LINE_OFFSET;
             if (reportedLines.contains(errorLine)) continue;
-            Token errTok = new Token(tk.getLexeme(), tk.getLexicalComp(), errorLine, tk.getColumn());
+
+            String label = reconstructTransitionLabel(i);
+            String suggestion = label.isEmpty() ? "q0 -> q1 ['a'];" : label + ";";
+
+            Token errTok = new Token("]", "CORCHETE_DER", errorLine, tk.getColumn());
             errors.add(new ErrorLSSL(1,
-                "[SinError 019] Falta ';' al final de la transición. | ✏ La transición debe terminar con ';': q0 -> q1 ['a'];",
+                "[SinError 019] Falta ';' al final de la transición. | ✏ Correcto: " + suggestion,
                 errTok));
             reportedLines.add(errorLine);
         }
+    }
+
+    /**
+     * Detecta transiciones donde falta el corchete de cierre ']'.
+     * Busca cada '[' de transición (precedido por Ident FLECHA Ident) y verifica
+     * que haya un ']' correspondiente. Si no lo hay, reporta SinError 020.
+     * Debe llamarse ANTES de detectMissingTransitionSemicolons() para que las
+     * líneas afectadas queden en reportedLines y no se genere también SinError 019.
+     */
+    private void detectMissingTransitionClosingBracket() {
+        Set<Integer> reportedLines = new HashSet<>();
+        for (ErrorLSSL e : errors) {
+            if (e.getLine() > 0) reportedLines.add(e.getLine());
+        }
+
+        for (int i = 3; i < tokens.size(); i++) {
+            Token openBracket = tokens.get(i);
+            if (!"CORCHETE_IZQ".equals(openBracket.getLexicalComp())) continue;
+
+            // Debe ser una transición: Ident FLECHA Ident [
+            if (!isIdentToken(tokens.get(i - 1))
+                    || !"FLECHA".equals(tokens.get(i - 2).getLexicalComp())
+                    || !isIdentToken(tokens.get(i - 3))) continue;
+
+            // Escanear hacia adelante buscando el ]
+            boolean foundClose = false;
+            int j = i + 1;
+            while (j < tokens.size()) {
+                String comp = tokens.get(j).getLexicalComp();
+                if ("CORCHETE_DER".equals(comp)) { foundClose = true; break; }
+                // Tokens que no pueden estar dentro de [...] → salimos sin ]
+                if ("FLECHA".equals(comp) || "PUNTO_Y_COMA".equals(comp)
+                        || "LLAVE_IZQ".equals(comp) || "LLAVE_DER".equals(comp)
+                        || "TIPO".equals(comp) || "ALFABETO".equals(comp)
+                        || "INICIO".equals(comp) || "FINAL".equals(comp)
+                        || "ESTADOS".equals(comp) || "FONDO".equals(comp)
+                        || "AFD".equals(comp)    || "AFN".equals(comp)) break;
+                j++;
+            }
+
+            if (foundClose) continue;
+
+            // ] faltante: usar la línea del '[' como referencia de error
+            int errorLine = openBracket.getLine() + TOKEN_LINE_OFFSET;
+            if (reportedLines.contains(errorLine)) continue;
+
+            // Reconstruir la etiqueta de la transición
+            Token origin = tokens.get(i - 3);
+            Token dest   = tokens.get(i - 1);
+            ArrayList<String> syms = new ArrayList<>();
+            for (int k = i + 1; k < j; k++) {
+                Token st = tokens.get(k);
+                if ("EPSILON".equals(st.getLexicalComp())) {
+                    syms.add("EPSILON");
+                } else if ("COMILLA_SIMPLE".equals(st.getLexicalComp())
+                        && k + 2 < tokens.size()
+                        && isIdentToken(tokens.get(k + 1))
+                        && "COMILLA_SIMPLE".equals(tokens.get(k + 2).getLexicalComp())) {
+                    syms.add("'" + tokens.get(k + 1).getLexeme() + "'");
+                    k += 2;
+                }
+            }
+            String symStr = syms.isEmpty() ? "..." : String.join(", ", syms);
+            String suggestion = origin.getLexeme() + " -> " + dest.getLexeme()
+                                + " [" + symStr + "];";
+
+            Token errTok = new Token("]", "CORCHETE_DER", errorLine, openBracket.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 020] Falta el corchete de cierre ']' en la transición. | ✏ Correcto: " + suggestion,
+                errTok));
+            reportedLines.add(errorLine);
+        }
+    }
+
+    /** Verifica que el CORCHETE_DER en la posición dada cierra una transición
+     *  (existe un CORCHETE_IZQ precedido del patrón Ident FLECHA Ident). */
+    private boolean isTransitionClosingBracket(int closeBracketIdx) {
+        for (int i = closeBracketIdx - 1; i >= 0; i--) {
+            String lc = tokens.get(i).getLexicalComp();
+            if ("CORCHETE_IZQ".equals(lc)) {
+                return i >= 3
+                    && "FLECHA".equals(tokens.get(i - 2).getLexicalComp())
+                    && isIdentToken(tokens.get(i - 1))
+                    && isIdentToken(tokens.get(i - 3));
+            }
+            // Si cruzamos otro ] o ; antes de encontrar [ no es cierre de transición
+            if ("CORCHETE_DER".equals(lc) || "PUNTO_Y_COMA".equals(lc)) break;
+        }
+        return false;
+    }
+
+    /** Reconstruye la etiqueta de la transición (ej: "q0 -> q1 ['a', 'b']")
+     *  leyendo hacia atrás desde el CORCHETE_DER indicado. */
+    private String reconstructTransitionLabel(int closeBracketIdx) {
+        int openIdx = -1;
+        for (int i = closeBracketIdx - 1; i >= 0; i--) {
+            String lc = tokens.get(i).getLexicalComp();
+            if ("CORCHETE_IZQ".equals(lc)) { openIdx = i; break; }
+            if ("CORCHETE_DER".equals(lc) || "PUNTO_Y_COMA".equals(lc)) break;
+        }
+        if (openIdx < 3) return "";
+
+        Token dest   = tokens.get(openIdx - 1);
+        Token arrow  = tokens.get(openIdx - 2);
+        Token origin = tokens.get(openIdx - 3);
+        if (!"FLECHA".equals(arrow.getLexicalComp())) return "";
+        if (!isIdentToken(dest) || !isIdentToken(origin)) return "";
+
+        // Recolectar los símbolos entre [ y ]
+        ArrayList<String> syms = new ArrayList<>();
+        for (int i = openIdx + 1; i < closeBracketIdx; i++) {
+            Token t = tokens.get(i);
+            if ("EPSILON".equals(t.getLexicalComp())) {
+                syms.add("EPSILON");
+            } else if ("COMILLA_SIMPLE".equals(t.getLexicalComp())
+                    && i + 2 < closeBracketIdx
+                    && isIdentToken(tokens.get(i + 1))
+                    && "COMILLA_SIMPLE".equals(tokens.get(i + 2).getLexicalComp())) {
+                syms.add("'" + tokens.get(i + 1).getLexeme() + "'");
+                i += 2;
+            }
+        }
+
+        String symStr = syms.isEmpty() ? "..." : String.join(", ", syms);
+        return origin.getLexeme() + " -> " + dest.getLexeme() + " [" + symStr + "]";
+    }
+
+    private boolean isIdentToken(Token t) {
+        String lc = t.getLexicalComp();
+        return "IDENTIFICADOR".equals(lc) || "COLOR".equals(lc);
     }
 
     /**
@@ -798,7 +1031,7 @@ public class Compilador extends javax.swing.JFrame {
                     Functions.addRowDataInTable(tbl_Token, data);
 
                     if (token.getLexicalComp().equals("ERROR_LEXICO")) {
-                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter '" + token.getLexeme() + "' no reconocido", token));
+                        errors.add(new ErrorLSSL(1, "[LexError 001] Error Léxico: Carácter '" + token.getLexeme() + "' no reconocido. | ✏ Elimina o reemplaza el carácter; solo se permiten letras, dígitos y los símbolos del DSL.", token));
                     } else if (token.getLexicalComp().equals("ERROR_COLOR")) {
                         errors.add(new ErrorLSSL(1,
                             "[LexError 002] Color '" + token.getLexeme() + "' no es un color válido para FONDO. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
@@ -833,8 +1066,10 @@ public class Compilador extends javax.swing.JFrame {
                 errors.addAll(parser.errors);
             }
 
-            // Post-chequeo: detectar transiciones con ';' faltante que el parser
-            // consumió silenciosamente durante la recuperación de errores.
+            // Post-chequeo: detectar ] faltante primero (más grave),
+            // luego ; faltante. El orden importa: el primero "reclama" la línea
+            // en reportedLines y el segundo no duplica sobre ella.
+            detectMissingTransitionClosingBracket();
             detectMissingTransitionSemicolons();
             Functions.sortErrorsByLineAndColumn(errors);
 
@@ -903,9 +1138,8 @@ public class Compilador extends javax.swing.JFrame {
                     sugerencia  = desc.substring(sepIdx + 5);
                 }
 
-                // Línea del código fuente (misma corrección: índice lineNum-2)
                 String fragmento = "";
-                int elemIdx = numLinea - 2;
+                int elemIdx = numLinea - DOC_ELEM_OFFSET;
                 if (elemIdx >= 0) {
                     try {
                         javax.swing.text.Element docRoot = panel_Codigo.getDocument().getDefaultRootElement();
@@ -1009,9 +1243,7 @@ public class Compilador extends javax.swing.JFrame {
 
         for (ErrorLSSL error : errors) {
             int lineNum = error.getLine();
-            // getElement(N) apunta al contenido de la línea visible N+2 en este documento,
-            // por lo que se usa lineNum-2 para obtener el párrafo correcto.
-            int elemIdx = lineNum - 2;
+            int elemIdx = lineNum - DOC_ELEM_OFFSET;
             if (elemIdx >= 0 && elemIdx < totalLines) {
                 try {
                     javax.swing.text.Element lineElem = root.getElement(elemIdx);
