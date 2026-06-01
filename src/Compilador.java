@@ -38,6 +38,30 @@ import javax.swing.table.DefaultTableModel;
  */
 public class Compilador extends javax.swing.JFrame {
 
+    /**
+     * Offsets entre el número de línea reportado por los tokens del lexer y la
+     * línea visible en el editor (gutter), y entre ese número y el índice de
+     * elemento del Document de JTextPane.
+     *
+     * Causa raíz identificada:
+     *   JFlex cuenta líneas con yyline (base 0).  El Lexer suma +1 para hacerlo
+     *   base 1, pero panel_Codigo.getText() devuelve el texto del JTextPane con
+     *   un párrafo vacío implícito al inicio del Document, lo que hace que JFlex
+     *   ya haya avanzado yyline=1 cuando encuentra el primer carácter visible.
+     *   Resultado: token.getLine() = línea_gutter - 1  (TOKEN_LINE_OFFSET = 1).
+     *
+     *   Por su parte, getDefaultRootElement().getElement(N) apunta al párrafo
+     *   (N+2)-ésimo del gutter porque el Document tiene ese mismo párrafo vacío
+     *   inicial (índice 0) más la numeración base-0 de los elementos.
+     *   Resultado: elemIdx = lineaGutter - 2  (DOC_ELEM_OFFSET = 2).
+     *
+     * Reglas de uso:
+     *   errorLine  = token.getLine() + TOKEN_LINE_OFFSET   → número para mostrar
+     *   elemIdx    = errorLine       - DOC_ELEM_OFFSET      → índice de Document
+     */
+    private static final int TOKEN_LINE_OFFSET = 1;
+    private static final int DOC_ELEM_OFFSET   = 2;
+
     private String title;
     private Directory Directorio;
     private ArrayList<Token> tokens;
@@ -476,7 +500,7 @@ public class Compilador extends javax.swing.JFrame {
                     && "PUNTO_Y_COMA".equals(tokens.get(i + 1).getLexicalComp());
             if (followedBySemicolon) continue;
 
-            int errorLine = tk.getLine() + 1;
+            int errorLine = tk.getLine() + TOKEN_LINE_OFFSET;
             if (reportedLines.contains(errorLine)) continue;
 
             String label = reconstructTransitionLabel(i);
@@ -531,7 +555,7 @@ public class Compilador extends javax.swing.JFrame {
             if (foundClose) continue;
 
             // ] faltante: usar la línea del '[' como referencia de error
-            int errorLine = openBracket.getLine() + 1;
+            int errorLine = openBracket.getLine() + TOKEN_LINE_OFFSET;
             if (reportedLines.contains(errorLine)) continue;
 
             // Reconstruir la etiqueta de la transición
@@ -1053,9 +1077,8 @@ public class Compilador extends javax.swing.JFrame {
                     sugerencia  = desc.substring(sepIdx + 5);
                 }
 
-                // Línea del código fuente (misma corrección: índice lineNum-2)
                 String fragmento = "";
-                int elemIdx = numLinea - 2;
+                int elemIdx = numLinea - DOC_ELEM_OFFSET;
                 if (elemIdx >= 0) {
                     try {
                         javax.swing.text.Element docRoot = panel_Codigo.getDocument().getDefaultRootElement();
@@ -1159,9 +1182,7 @@ public class Compilador extends javax.swing.JFrame {
 
         for (ErrorLSSL error : errors) {
             int lineNum = error.getLine();
-            // getElement(N) apunta al contenido de la línea visible N+2 en este documento,
-            // por lo que se usa lineNum-2 para obtener el párrafo correcto.
-            int elemIdx = lineNum - 2;
+            int elemIdx = lineNum - DOC_ELEM_OFFSET;
             if (elemIdx >= 0 && elemIdx < totalLines) {
                 try {
                     javax.swing.text.Element lineElem = root.getElement(elemIdx);

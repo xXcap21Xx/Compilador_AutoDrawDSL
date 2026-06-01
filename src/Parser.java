@@ -241,6 +241,16 @@ public class Parser extends java_cup.runtime.lr_parser {
         String lexAnterior  = (tokenAnterior != null) ? tokenAnterior.getLexeme() : "";
 
         String mensaje;
+        // Duplicate-declaration detection (checked before context switch)
+        if ("TIPO".equals(compActual) && automatonType != null) {
+            mensaje = "[SinError 021] El tipo de autómata ya fue declarado como '"
+                    + automatonType + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo debe haber un TIPO al inicio del programa.";
+        } else if ("INICIO".equals(compActual) && initialState != null) {
+            mensaje = "[SinError 022] El estado inicial ya fue declarado como '"
+                    + initialState + "'. | ✏ Elimina la declaración duplicada; "
+                    + "solo puede haber un INICIO.";
+        } else
         switch (compAnterior) {
             case "TIPO":
                 mensaje = "[SinError 010] Después de TIPO se esperaba AFD o AFN, pero se encontró '"
@@ -420,7 +430,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 100] Estructura de programa mal formada", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 023] Estructura de programa mal formada. | ✏ El programa debe tener: TIPO, ALFABETO, INICIO, estados, transiciones y FINAL.", null));
         RESULT = new ASTNode("Error_Program");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-1)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -476,7 +486,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 101] Falta TIPO y ALFABETO al inicio del programa", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 024] Falta la sección de configuración al inicio del programa. | ✏ El programa debe comenzar con: TIPO AFD;  ALFABETO { 'a', 'b' };", null));
         RESULT = new ASTNode("Error_Config");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigSection",1, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -689,7 +699,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 102] Falta INICIO <estado>;", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 025] Falta la declaración del estado inicial. | ✏ Agrega después del ALFABETO: INICIO q0;", null));
         RESULT = new ASTNode("State_Declaration_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDeclarationSection",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -956,7 +966,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SemError 103] Falta FINAL <estado> [, <estado>, ...];", null));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 026] Falta la declaración de estados finales. | ✏ Agrega al final del programa: FINAL q2;  ó  FINAL q1, q2;", null));
         RESULT = new ASTNode("Acceptance_Section", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AcceptanceSection",4, ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
