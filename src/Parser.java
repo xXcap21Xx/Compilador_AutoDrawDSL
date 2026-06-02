@@ -427,6 +427,10 @@ public class Parser extends java_cup.runtime.lr_parser {
     }
 
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+        // Suprimir si ya existe otro SinError — este sería un error en cascada del modo pánico
+        boolean hasSinError = errors.stream()
+            .anyMatch(e -> e.getDescription() != null && e.getDescription().contains("SinError"));
+        if (hasSinError) return;
         Token t = (Token) s.value;
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";

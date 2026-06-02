@@ -706,6 +706,67 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     /**
+     * Detecta INICIO <estado> o FINAL <estados> que no van seguidos de ';'.
+     * El modo pánico del parser consume estos tokens cuando hay otro error anterior,
+     * por lo que este post-chequeo complementa la detección sintáctica.
+     */
+    private void detectMissingStatementSemicolons() {
+        Set<Integer> reportedLines = new HashSet<>();
+        for (ErrorLSSL e : errors) {
+            if (e.getLine() > 0) reportedLines.add(e.getLine());
+        }
+
+        for (int i = 0; i < tokens.size() - 1; i++) {
+            Token tk = tokens.get(i);
+            String comp = tk.getLexicalComp();
+
+            if ("INICIO".equals(comp)) {
+                if (i + 1 < tokens.size() && isIdentToken(tokens.get(i + 1))) {
+                    Token stateTok = tokens.get(i + 1);
+                    boolean hasSemicolon = (i + 2 < tokens.size())
+                        && "PUNTO_Y_COMA".equals(tokens.get(i + 2).getLexicalComp());
+                    if (!hasSemicolon) {
+                        int errorLine = stateTok.getLine() + TOKEN_LINE_OFFSET;
+                        if (!reportedLines.contains(errorLine)) {
+                            errors.add(new ErrorLSSL(1,
+                                "[SinError 027] Falta ';' después del estado inicial. | ✏ Correcto: INICIO "
+                                + stateTok.getLexeme() + ";",
+                                new Token(stateTok.getLexeme(), stateTok.getLexicalComp(), errorLine, stateTok.getColumn())));
+                            reportedLines.add(errorLine);
+                        }
+                    }
+                }
+            } else if ("FINAL".equals(comp)) {
+                // Avanzar por la lista: FINAL Ident (, Ident)*
+                int j = i + 1;
+                while (j < tokens.size() && isIdentToken(tokens.get(j))) {
+                    j++;
+                    if (j < tokens.size() && "COMA".equals(tokens.get(j).getLexicalComp())) {
+                        j++;
+                    } else {
+                        break;
+                    }
+                }
+                Token lastState = (j - 1 > i) ? tokens.get(j - 1) : null;
+                if (lastState != null && isIdentToken(lastState)) {
+                    boolean hasSemicolon = j < tokens.size()
+                        && "PUNTO_Y_COMA".equals(tokens.get(j).getLexicalComp());
+                    if (!hasSemicolon) {
+                        int errorLine = lastState.getLine() + TOKEN_LINE_OFFSET;
+                        if (!reportedLines.contains(errorLine)) {
+                            errors.add(new ErrorLSSL(1,
+                                "[SinError 028] Falta ';' al final de la declaración FINAL. | ✏ Correcto: FINAL "
+                                + lastState.getLexeme() + ";",
+                                new Token(lastState.getLexeme(), lastState.getLexicalComp(), errorLine, lastState.getColumn())));
+                            reportedLines.add(errorLine);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Busca la N-ésima ocurrencia de origin->destination en listaSimbolosGlobal.
      * El contador asegura que cada nodo Transition del AST recibe su token correcto
      * incluso cuando varias transiciones comparten el mismo par origen-destino (AFN).
@@ -1082,6 +1143,7 @@ public class Compilador extends javax.swing.JFrame {
             // en reportedLines y el segundo no duplica sobre ella.
             detectMissingTransitionClosingBracket();
             detectMissingTransitionSemicolons();
+            detectMissingStatementSemicolons();
             Functions.sortErrorsByLineAndColumn(errors);
 
             // ========================================================
