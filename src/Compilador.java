@@ -544,11 +544,8 @@ public class Compilador extends javax.swing.JFrame {
      * Nota: tk.getLine() tiene un desfase de -1 respecto al número de línea visible
      * en el editor; se compensa con +1 al crear el token de error.
      */
-    private void detectMissingTransitionSemicolons() {
-        Set<Integer> reportedLines = new HashSet<>();
-        for (ErrorLSSL e : errors) {
-            if (e.getLine() > 0) reportedLines.add(e.getLine());
-        }
+    private boolean detectMissingTransitionSemicolons() {
+        boolean found = false;
         for (int i = 0; i < tokens.size(); i++) {
             Token tk = tokens.get(i);
             if (!"CORCHETE_DER".equals(tk.getLexicalComp())) continue;
@@ -562,17 +559,244 @@ public class Compilador extends javax.swing.JFrame {
             if (followedBySemicolon) continue;
 
             int errorLine = tk.getLine() + TOKEN_LINE_OFFSET;
-            if (reportedLines.contains(errorLine)) continue;
+            if (hasTransitionSemicolonErrorOnLine(errorLine)) continue;
 
             String label = reconstructTransitionLabel(i);
             String suggestion = label.isEmpty() ? "q0 -> q1 ['a'];" : label + ";";
 
+            removeTransitionSemicolonCascades(errorLine);
             Token errTok = new Token("]", "CORCHETE_DER", errorLine, tk.getColumn());
             errors.add(new ErrorLSSL(1,
                 "[SinError 019] Falta ';' al final de la transición. | ✏ Correcto: " + suggestion,
                 errTok));
-            reportedLines.add(errorLine);
+            found = true;
         }
+        return found;
+    }
+
+    private boolean hasTransitionSemicolonErrorOnLine(int line) {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (e.getLine() == line && desc != null
+                    && desc.contains("SinError 019")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void removeTransitionSemicolonCascades(int line) {
+        errors.removeIf(e -> {
+            String desc = e.getDescription();
+            return e.getLine() == line && desc != null
+                    && ((desc.contains("Después de ']'")
+                         && desc.contains("se esperaba ';'")
+                         && desc.contains("transici"))
+                        || (desc.contains("<fin de archivo>")
+                            && desc.contains("símbolo")));
+        });
+    }
+
+    private boolean detectMissingConfigSemicolons() {
+        boolean found = false;
+        for (int i = 0; i < tokens.size(); i++) {
+            Token keyword = tokens.get(i);
+            String comp = keyword.getLexicalComp();
+            if (!"TIPO".equals(comp) && !"FONDO".equals(comp)) continue;
+
+            int line = keyword.getLine() + TOKEN_LINE_OFFSET;
+            Token value = null;
+            boolean hasSemicolonOnLine = false;
+            for (int j = i + 1; j < tokens.size(); j++) {
+                Token current = tokens.get(j);
+                if (current.getLine() + TOKEN_LINE_OFFSET != line) break;
+                if ("PUNTO_Y_COMA".equals(current.getLexicalComp())) {
+                    hasSemicolonOnLine = true;
+                    break;
+                }
+                value = current;
+            }
+            if (hasSemicolonOnLine || value == null || hasConfigSemicolonErrorOnLine(line, comp)) continue;
+
+            String sentence = keyword.getLexeme() + " " + value.getLexeme();
+            Token errTok = new Token(keyword.getLexeme(), comp, line, keyword.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 010] Después de " + sentence
+                + " se esperaba ';' para cerrar la instrucción. | ✏ Correcto: "
+                + sentence + ";",
+                errTok));
+            found = true;
+        }
+        return found;
+    }
+
+    private boolean hasConfigSemicolonErrorOnLine(int line, String comp) {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (e.getLine() == line && desc != null && desc.contains(comp)
+                    && desc.contains("se esperaba ';'")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean detectMissingStartFinalSemicolons() {
+        boolean found = false;
+        Set<Integer> reportedLines = new HashSet<>();
+        for (ErrorLSSL e : errors) {
+            if (e.getLine() > 0) reportedLines.add(e.getLine());
+        }
+
+        for (int i = 0; i < tokens.size(); i++) {
+            Token keyword = tokens.get(i);
+            String comp = keyword.getLexicalComp();
+            if (!"INICIO".equals(comp) && !"FINAL".equals(comp)) continue;
+
+            int line = keyword.getLine() + TOKEN_LINE_OFFSET;
+            boolean hasSemicolonOnLine = false;
+            Token lastTokenOnLine = keyword;
+
+            for (int j = i + 1; j < tokens.size(); j++) {
+                Token current = tokens.get(j);
+                if (current.getLine() + TOKEN_LINE_OFFSET != line) break;
+                lastTokenOnLine = current;
+                if ("PUNTO_Y_COMA".equals(current.getLexicalComp())) {
+                    hasSemicolonOnLine = true;
+                    break;
+                }
+            }
+
+            if (hasSemicolonOnLine || hasStartFinalSemicolonErrorOnLine(line, comp)) continue;
+
+            String estado = lastTokenOnLine != keyword ? " " + lastTokenOnLine.getLexeme() : "";
+            String etiqueta = "INICIO".equals(comp)
+                    ? "la declaración del estado inicial"
+                    : "la declaración de estados finales";
+            String correcto = "INICIO".equals(comp)
+                    ? "INICIO" + estado + ";"
+                    : "FINAL" + estado + ";";
+
+            Token errTok = new Token(keyword.getLexeme(), comp, line, keyword.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 010] Después de " + keyword.getLexeme() + estado
+                + " se esperaba ';' para cerrar " + etiqueta + ". | ✏ Correcto: " + correcto,
+                errTok));
+            reportedLines.add(line);
+            found = true;
+        }
+        return found;
+    }
+
+    private boolean hasStartFinalSemicolonErrorOnLine(int line, String comp) {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (e.getLine() == line && desc != null && desc.contains(comp)
+                    && desc.contains("se esperaba ';'")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasSpecificSemicolonSyntaxError() {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (desc == null) continue;
+            if (desc.contains("SinError") &&
+                    (desc.contains("se esperaba ';'")
+                     || desc.contains("Falta ';'"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean detectMissingFinalBeforeTransitions() {
+        boolean hasFinal = false;
+        for (Token token : tokens) {
+            if ("FINAL".equals(token.getLexicalComp())) {
+                hasFinal = true;
+                break;
+            }
+        }
+        if (hasFinal || hasErrorCode("SinError 026")) return false;
+
+        for (int i = 1; i + 1 < tokens.size(); i++) {
+            if (!"FLECHA".equals(tokens.get(i).getLexicalComp())) continue;
+            if (!isIdentToken(tokens.get(i - 1)) || !isIdentToken(tokens.get(i + 1))) continue;
+
+            Token origin = tokens.get(i - 1);
+            errors.add(new ErrorLSSL(1,
+                "[SinError 026] Falta la declaración de estados finales. | ✏ Agrega antes de las transiciones: FINAL q2;  ó  FINAL q1, q2;",
+                origin));
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasErrorCode(String code) {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (desc != null && desc.contains(code)) return true;
+        }
+        return false;
+    }
+
+    private boolean detectMissingBraceSectionSemicolons() {
+        boolean found = false;
+        for (int i = 0; i < tokens.size(); i++) {
+            Token closeBrace = tokens.get(i);
+            if (!"LLAVE_DER".equals(closeBrace.getLexicalComp())) continue;
+
+            String section = findBraceSectionKeyword(i);
+            if (!"ALFABETO".equals(section) && !"ESTADOS".equals(section)) continue;
+
+            boolean followedBySemicolon = (i + 1 < tokens.size())
+                    && "PUNTO_Y_COMA".equals(tokens.get(i + 1).getLexicalComp());
+            if (followedBySemicolon) continue;
+
+            int line = closeBrace.getLine() + TOKEN_LINE_OFFSET;
+            if (hasBraceSectionSemicolonErrorOnLine(line, section)) continue;
+
+            String suggestion = "ALFABETO".equals(section)
+                    ? "ALFABETO { 'a', 'b' };"
+                    : "ESTADOS { q1, q2, ... };";
+            Token errTok = new Token("}", "LLAVE_DER", line, closeBrace.getColumn());
+            errors.add(new ErrorLSSL(1,
+                "[SinError 010] Después de '}' se esperaba ';' para cerrar "
+                + section + ". | ✏ Correcto: " + suggestion,
+                errTok));
+            found = true;
+        }
+        return found;
+    }
+
+    private String findBraceSectionKeyword(int closeBraceIdx) {
+        int depth = 0;
+        for (int i = closeBraceIdx; i >= 0; i--) {
+            String comp = tokens.get(i).getLexicalComp();
+            if ("LLAVE_DER".equals(comp)) {
+                depth++;
+            } else if ("LLAVE_IZQ".equals(comp)) {
+                depth--;
+                if (depth == 0 && i > 0) {
+                    return tokens.get(i - 1).getLexicalComp();
+                }
+            }
+        }
+        return "";
+    }
+
+    private boolean hasBraceSectionSemicolonErrorOnLine(int line, String section) {
+        for (ErrorLSSL e : errors) {
+            String desc = e.getDescription();
+            if (e.getLine() == line && desc != null && desc.contains(section)
+                    && desc.contains("se esperaba ';'")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1036,17 +1260,6 @@ public class Compilador extends javax.swing.JFrame {
                         errors.add(new ErrorLSSL(1,
                             "[LexError 002] Color '" + token.getLexeme() + "' no es un color válido para FONDO. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
                             token));
-                    } else if (token.getLexicalComp().equals("ERROR_DIGIT_IDENT")) {
-                        String lex = token.getLexeme();
-                        String letras  = lex.replaceAll("^[0-9]+", "");
-                        String digitos = lex.replaceAll("[^0-9].*", "");
-                        errors.add(new ErrorLSSL(1,
-                            "[LexError 003] El identificador '" + lex + "' no puede comenzar con dígito. | ✏ Los nombres deben comenzar con letra. Sugerencia: '" + letras + digitos + "'",
-                            token));
-                    } else if (token.getLexicalComp().equals("ERROR_DIGIT")) {
-                        errors.add(new ErrorLSSL(1,
-                            "[LexError 003] Se encontró el número '" + token.getLexeme() + "'. | ✏ Los nombres de estados y símbolos deben comenzar con letra, no con dígito.",
-                            token));
                     }
                 }
             }
@@ -1080,8 +1293,19 @@ public class Compilador extends javax.swing.JFrame {
             // Post-chequeo: detectar ] faltante primero (más grave),
             // luego ; faltante. El orden importa: el primero "reclama" la línea
             // en reportedLines y el segundo no duplica sobre ella.
+            boolean missingConfigSemicolon = detectMissingConfigSemicolons();
+            boolean missingBraceSectionSemicolon = detectMissingBraceSectionSemicolons();
+            boolean missingStartOrFinalSemicolon = detectMissingStartFinalSemicolons();
+            boolean missingFinalBeforeTransitions = detectMissingFinalBeforeTransitions();
             detectMissingTransitionClosingBracket();
-            detectMissingTransitionSemicolons();
+            boolean missingTransitionSemicolon = detectMissingTransitionSemicolons();
+            if (missingConfigSemicolon || missingBraceSectionSemicolon
+                    || missingStartOrFinalSemicolon || missingFinalBeforeTransitions
+                    || missingTransitionSemicolon
+                    || hasSpecificSemicolonSyntaxError()) {
+                errors.removeIf(e -> e.getDescription() != null
+                        && e.getDescription().contains("SinError 011"));
+            }
             Functions.sortErrorsByLineAndColumn(errors);
 
             // ========================================================

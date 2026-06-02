@@ -25,14 +25,7 @@
       "Bash(xargs grep -l \"automaton\\\\|state.*diagram\\\\|graph.*visual\")",
       "Bash(grep -E \"\\\\.java$|^d\")",
       "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar\" src/Parser.java)",
-      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/Parser.java)",
-      "Bash(java -jar lib/jflex-full-1.9.1.jar --outdir src src/Lexer.flex)",
-      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/Compilador.java)",
-      "Bash(jar tf *)",
-      "Bash(java -jar lib/java-cup-11b.jar -parser Parser -symbols sym -destdir src src/Parser.cup)",
-      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/compilerTools/SyntacticErrorCatalog.java src/Parser.java src/Compilador.java)",
-      "Bash(rm src/compilerTools/SyntacticErrorCatalog.java)",
-      "Bash(rm -f src/Parser.class 'src/Parser$CUP$Parser$actions.class')"
+      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/Parser.java)"
     ]
   }
 }
