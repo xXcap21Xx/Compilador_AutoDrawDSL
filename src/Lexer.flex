@@ -72,6 +72,12 @@ Identifier         = [a-zA-Z] [a-zA-Z0-9_]*
     /* Identificadores generales (nombres de estados, símbolos, etc.) */
     {Identifier}       { return token(yytext(), "IDENTIFICADOR", yyline, yycolumn, sym.IDENTIFICADOR); }
 
+    /* LexError 003: identificador que comienza con dígito(s) seguido de letras: 1q0, 123abc */
+    [0-9]+{Identifier} { return token(yytext(), "ERROR_DIGIT_IDENT", yyline, yycolumn, sym.error); }
+
+    /* LexError 003: secuencia de solo dígitos: 123, 0, 99 */
+    [0-9]+             { return token(yytext(), "ERROR_DIGIT",       yyline, yycolumn, sym.error); }
+
     /* Cualquier carácter no reconocido: error léxico */
     .                  { return token(yytext(), "ERROR_LEXICO", yyline, yycolumn, sym.error); }
 }
