@@ -354,7 +354,7 @@ ConfigType ::= TIPO AFD:a PUNTO_Y_COMA
     :}
     | TIPO error PUNTO_Y_COMA
     {: 
-        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] El tipo de autómata declarado no es válido. | ✏ Solo se acepta AFD o AFN: TIPO AFD;  ó  TIPO AFN;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     :}
     ;
@@ -449,7 +449,7 @@ StartDef ::= INICIO Ident:id PUNTO_Y_COMA
     :}
     | INICIO error PUNTO_Y_COMA
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Error en la declaración del estado inicial. | ✏ El nombre del estado debe ser un identificador válido: INICIO q0;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     :}
     ;
@@ -462,7 +462,7 @@ StateDef ::= ESTADOS LLAVE_IZQ StateNameList:sl LLAVE_DER PUNTO_Y_COMA
     :}
     | ESTADOS error PUNTO_Y_COMA
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato incorrecto. | ✏ Correcto: ESTADOS { q1, q2, ... };", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Error en la lista de estados declarados. | ✏ Los estados deben ir entre llaves y separados por comas: ESTADOS { q1, q2 };", tokenAnterior));
         RESULT = new ASTNode("StateDeclList", "ERROR");
     :}
     ;
@@ -530,7 +530,7 @@ Transition ::= Ident:origen FLECHA Ident:destino CORCHETE_IZQ TransitionSymbolLi
         boolean alreadyReported = !parser.errors.isEmpty() &&
             Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
         if (!alreadyReported) {
-            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición incompleta desde '" + tOri.getLexeme() + "'. | ✏ Formato completo: " + tOri.getLexeme() + " -> destino ['símbolo'];", tOri));
         }
         RESULT = new ASTNode("Transition", "ERROR");
     :}
@@ -572,7 +572,7 @@ FinalDef ::= FINAL StateList:sl PUNTO_Y_COMA
     :}
     | FINAL error PUNTO_Y_COMA
     {:
-        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Error en la declaración del estado final. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;  (uno o más estados separados por comas)", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     :}
     ;

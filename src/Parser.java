@@ -626,7 +626,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		 
-        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] El tipo de autómata declarado no es válido. | ✏ Solo se acepta AFD o AFN: TIPO AFD;  ó  TIPO AFN;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -834,7 +834,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Error en la declaración del estado inicial. | ✏ El nombre del estado debe ser un identificador válido: INICIO q0;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -862,7 +862,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato incorrecto. | ✏ Correcto: ESTADOS { q1, q2, ... };", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Error en la lista de estados declarados. | ✏ Los estados deben ir entre llaves y separados por comas: ESTADOS { q1, q2 };", tokenAnterior));
         RESULT = new ASTNode("StateDeclList", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -1013,7 +1013,7 @@ class CUP$Parser$actions {
         boolean alreadyReported = !parser.errors.isEmpty() &&
             Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
         if (!alreadyReported) {
-            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición incompleta desde '" + tOri.getLexeme() + "'. | ✏ Formato completo: " + tOri.getLexeme() + " -> destino ['símbolo'];", tOri));
         }
         RESULT = new ASTNode("Transition", "ERROR");
     
@@ -1105,7 +1105,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Error en la declaración del estado final. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;  (uno o más estados separados por comas)", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("FinalDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
