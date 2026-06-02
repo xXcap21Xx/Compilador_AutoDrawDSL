@@ -287,11 +287,9 @@ public class Parser extends java_cup.runtime.lr_parser {
                 break;
             case "LLAVE_DER":
                 if (seenAlphabet) {
-                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS, pero se encontró '"
-                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS. | ✏ Correcto: ESTADOS { q1, q2 };";
                 } else {
-                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO, pero se encontró '"
-                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' };";
                 }
                 break;
             case "INICIO":
@@ -323,8 +321,7 @@ public class Parser extends java_cup.runtime.lr_parser {
                 }
                 break;
             case "CORCHETE_DER":
-                mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: "
+                mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición. | ✏ Correcto: "
                         + (pendingTransitionOrigin != null && pendingTransitionDest != null
                            && !pendingTransitionSymbols.isEmpty()
                             ? pendingTransitionOrigin + " -> " + pendingTransitionDest
@@ -661,9 +658,7 @@ class CUP$Parser$actions {
             Math.abs(parser.errors.get(parser.errors.size() - 1).getLine()
                      - (tokenAnterior.getLine() + 1)) <= 5;
         if (!suppressCascade013) {
-            parser.errors.add(new ErrorLSSL(1,
-                "[SinError 013] Error en la definición del ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' }; — verifica que cada símbolo tenga comilla de apertura y cierre, y que los símbolos estén separados por comas.",
-                tokenAnterior));
+            parser.errors.add(new ErrorLSSL(1, "[SinError 013] Error en la definición del ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' }; — verifica que cada símbolo tenga comilla de apertura y cierre, y que los símbolos estén separados por comas.", tokenAnterior));
         }
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
@@ -1171,9 +1166,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1,
-            "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
-            tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron", tokenAnterior));
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",11, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
