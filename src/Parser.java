@@ -310,8 +310,18 @@ public class Parser extends java_cup.runtime.lr_parser {
                 mensaje = "[SinError 010] En la transición, después de '->' se esperaba el estado destino, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];"; break;
             case "CORCHETE_IZQ":
-                mensaje = "[SinError 010] Dentro de '[...]' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
-                        + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];"; break;
+                if ("CORCHETE_DER".equals(compActual)) {
+                    // Corchetes vacíos: []
+                    mensaje = "[SinError 010] Los corchetes [] están vacíos. | ✏ Debes incluir al menos un símbolo: ['a']  ó  [EPSILON]";
+                } else if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)) {
+                    // Símbolo sin comilla de apertura: [a] en vez de ['a']
+                    mensaje = "[SinError 010] Falta la comilla de apertura ' antes del símbolo '"
+                            + lexActual + "'. | ✏ Correcto: ['" + lexActual + "']  (comilla de apertura y comilla de cierre)";
+                } else {
+                    mensaje = "[SinError 010] Dentro de '[...]' se esperaba un símbolo 'x' o EPSILON, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: q0 -> q1 ['a'];  ó  q0 -> q1 ['a', 'b'];";
+                }
+                break;
             case "CORCHETE_DER":
                 mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
                         + lexActual + "'. | ✏ Correcto: "
@@ -328,8 +338,13 @@ public class Parser extends java_cup.runtime.lr_parser {
                             + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
                 } else if (initialState == null) {
                     // Dentro de ESTADOS { ... } — INICIO todavía no declarado
-                    mensaje = "[SinError 010] Después de ',' en ESTADOS se esperaba otro nombre de estado, pero se encontró '"
-                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, q3 };";
+                    if ("LLAVE_DER".equals(compActual)) {
+                        // Coma sobrante al final: ESTADOS { q1, q2, }
+                        mensaje = "[SinError 010] Coma ',' sobrante al final de la lista de ESTADOS. | ✏ Elimina la última coma: ESTADOS { q1, q2 };";
+                    } else {
+                        mensaje = "[SinError 010] Después de ',' en ESTADOS se esperaba otro nombre de estado, pero se encontró '"
+                                + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, q3 };";
+                    }
                 } else {
                     // Dentro de FINAL q1, ... — INICIO ya declarado, seenFinal aún false
                     mensaje = "[SinError 010] Después de ',' en FINAL se esperaba otro estado final, pero se encontró '"
@@ -337,11 +352,12 @@ public class Parser extends java_cup.runtime.lr_parser {
                 }
                 break;
             case "COMILLA_SIMPLE":
-                // Closing ' of a symbol; if next token starts a new statement it means ] was forgotten
+                // Closing ' of a symbol; if next token starts a new statement or ';' it means ] was forgotten
                 if ("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)
                         || "INICIO".equals(compActual) || "ESTADOS".equals(compActual)
                         || "FINAL".equals(compActual)  || "TIPO".equals(compActual)
-                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)) {
+                        || "FONDO".equals(compActual)  || "ALFABETO".equals(compActual)
+                        || "PUNTO_Y_COMA".equals(compActual)) {
                     String missClose = (pendingTransitionOrigin != null && pendingTransitionDest != null
                                         && !pendingTransitionSymbols.isEmpty())
                         ? pendingTransitionOrigin + " -> " + pendingTransitionDest
@@ -357,16 +373,48 @@ public class Parser extends java_cup.runtime.lr_parser {
                 if ("FLECHA".equals(compActual)) {
                     mensaje = "[SinError 010] Transición sin corchetes. Después de '->' falta '[símbolo]'."
                             + " | ✏ Correcto: " + lexAnterior + " -> destino ['símbolo'];";
+                } else if ("COMILLA_SIMPLE".equals(compActual) && seenFinal) {
+                    // Dentro de transición: falta corchete de apertura '[': q0 -> q1 'a'
+                    mensaje = "[SinError 010] Falta el corchete de apertura '[' antes del símbolo. | ✏ Correcto: "
+                            + lexAnterior + " -> destino ['símbolo'];";
+                } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)) && seenFinal) {
+                    // Dentro de transición: símbolo sin corchetes ni comillas: q0 -> q1 a
+                    mensaje = "[SinError 010] Falta el corchete '[' y las comillas del símbolo. | ✏ Correcto: "
+                            + lexAnterior + " -> destino ['" + lexActual + "'];";
+                } else if ("PUNTO_Y_COMA".equals(compActual) && seenAlphabet && initialState == null) {
+                    // Dentro de ESTADOS { ... }: falta '}' antes del ';': ESTADOS { q1, q2;
+                    mensaje = "[SinError 010] Falta '}' para cerrar la lista de ESTADOS antes del ';'. | ✏ Correcto: ESTADOS { "
+                            + lexAnterior + ", ... };";
+                } else if ("PUNTO_Y_COMA".equals(compActual) && seenFinal) {
+                    // En sección de transiciones: estado suelto antes de ';'
+                    mensaje = "[SinError 010] Estado '" + lexAnterior + "' suelto en las transiciones. | ✏ ¿Falta la flecha '->'? Correcto: "
+                            + lexAnterior + " -> destino ['símbolo'];";
                 } else if ("PUNTO_Y_COMA".equals(compActual)) {
                     mensaje = "[SinError 010] Punto y coma inesperado después de '" + lexAnterior + "'."
                             + " | ✏ ¿La instrucción anterior estaba incompleta?";
+                } else if (("LLAVE_DER".equals(compActual) || "COMA".equals(compActual)) && !seenAlphabet) {
+                    // Dentro de ALFABETO { ... }: IDENTIFICADOR seguido de } o , sin comilla de cierre
+                    mensaje = "[SinError 010] Falta la comilla de cierre ' en el símbolo '"
+                            + lexAnterior + "'. | ✏ Correcto: '" + lexAnterior + "'  (comilla de apertura y comilla de cierre)";
+                } else if (("CORCHETE_DER".equals(compActual) || "COMA".equals(compActual)) && seenAlphabet) {
+                    // Dentro de transición [...]: IDENTIFICADOR seguido de ] o , sin comilla de cierre
+                    mensaje = "[SinError 010] Falta la comilla de cierre ' en el símbolo '"
+                            + lexAnterior + "'. | ✏ Correcto: '" + lexAnterior + "'  (comilla de apertura y comilla de cierre)";
+                } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual)) && seenAlphabet && initialState == null) {
+                    // Dentro de ESTADOS { ... }: falta coma entre estados: ESTADOS { q1 q2 }
+                    mensaje = "[SinError 010] Falta la coma ',' entre los estados '" + lexAnterior + "' y '" + lexActual + "'. | ✏ Correcto: ESTADOS { "
+                            + lexAnterior + ", " + lexActual + ", ... };";
                 } else {
                     mensaje = "[SinError 010] Token inesperado '" + lexActual + "' después de '" + lexAnterior + "'."
                             + " | ✏ Revisa la sintaxis de esta instrucción.";
                 }
                 break;
             default:
-                if ("PUNTO_Y_COMA".equals(compActual)) {
+                if ("-".equals(lexActual)) {
+                    mensaje = "[SinError 010] Flecha de transición incompleta: se encontró '-' solo. | ✏ La flecha debe ser '->' (guion seguido de '>')";
+                } else if (">".equals(lexActual)) {
+                    mensaje = "[SinError 010] Flecha de transición incompleta: se encontró '>' solo. | ✏ La flecha debe ser '->' (guion seguido de '>')";
+                } else if ("PUNTO_Y_COMA".equals(compActual)) {
                     mensaje = "[SinError 010] Punto y coma ';' en lugar incorrecto, cerca de '" + lexAnterior + "'."
                             + " | ✏ ¿Hay un ';' de más o la instrucción anterior estaba incompleta?";
                 } else if ("EOF".equals(compActual) || "<fin de archivo>".equals(lexActual)) {
@@ -578,7 +626,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		 
-        parser.errors.add(new ErrorLSSL(1, "[SinError 012] Después de TIPO solo va AFD o AFN. Ejemplo: TIPO AFD;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 012] El tipo de autómata declarado no es válido. | ✏ Solo se acepta AFD o AFN: TIPO AFD;  ó  TIPO AFN;", tokenAnterior));
         RESULT = new ASTNode("ConfigType", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("ConfigType",5, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -607,7 +655,16 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 013] ALFABETO debe ir: ALFABETO { 'a', 'b', ... };", tokenAnterior));
+        // Suprimir si syntax_error ya reportó un error en la misma sección ALFABETO
+        boolean suppressCascade013 = !parser.errors.isEmpty() &&
+            tokenAnterior != null &&
+            Math.abs(parser.errors.get(parser.errors.size() - 1).getLine()
+                     - (tokenAnterior.getLine() + 1)) <= 5;
+        if (!suppressCascade013) {
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 013] Error en la definición del ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' }; — verifica que cada símbolo tenga comilla de apertura y cierre, y que los símbolos estén separados por comas.",
+                tokenAnterior));
+        }
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("AlphabetDef",6, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -777,7 +834,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Formato: INICIO <estado>;", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 015] Error en la declaración del estado inicial. | ✏ El nombre del estado debe ser un identificador válido: INICIO q0;", tokenAnterior));
         RESULT = new ASTNode("StartState", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StartDef",8, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -805,7 +862,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Formato incorrecto. | ✏ Correcto: ESTADOS { q1, q2, ... };", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 016] Error en la lista de estados declarados. | ✏ Los estados deben ir entre llaves y separados por comas: ESTADOS { q1, q2 };", tokenAnterior));
         RESULT = new ASTNode("StateDeclList", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("StateDef",10, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
@@ -956,7 +1013,7 @@ class CUP$Parser$actions {
         boolean alreadyReported = !parser.errors.isEmpty() &&
             Math.abs(parser.errors.get(parser.errors.size() - 1).getLine() - orLine) <= 2;
         if (!alreadyReported) {
-            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición mal formada: " + tOri.getLexeme() + " -> dest ['símbolo'];", tOri));
+            parser.errors.add(new ErrorLSSL(1, "[SinError 014] Transición incompleta desde '" + tOri.getLexeme() + "'. | ✏ Formato completo: " + tOri.getLexeme() + " -> destino ['símbolo'];", tOri));
         }
         RESULT = new ASTNode("Transition", "ERROR");
     
@@ -1048,7 +1105,7 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Formato: FINAL <estado> [, <estado>, ...];", tokenAnterior));
+        parser.errors.add(new ErrorLSSL(1, "[SinError 017] Error en la declaración del estado final. | ✏ Correcto: FINAL q2;  ó  FINAL q1, q2;  (uno o más estados separados por comas)", tokenAnterior));
         RESULT = new ASTNode("FinalStates", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("FinalDef",9, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
