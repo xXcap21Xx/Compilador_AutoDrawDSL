@@ -23,7 +23,9 @@
       "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/Compilador.java)",
       "Bash(javac -cp \"lib/*;src\" -d out src/compilerTools/*.java src/Compilador.java)",
       "Bash(xargs grep -l \"automaton\\\\|state.*diagram\\\\|graph.*visual\")",
-      "Bash(grep -E \"\\\\.java$|^d\")"
+      "Bash(grep -E \"\\\\.java$|^d\")",
+      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar\" src/Parser.java)",
+      "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/Parser.java)"
     ]
   }
 }
