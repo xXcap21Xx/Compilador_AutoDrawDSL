@@ -1177,13 +1177,14 @@ public class Compilador extends javax.swing.JFrame {
 
     private void btn_EjecutarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_EjecutarActionPerformed
         btn_Compilar.doClick();
-        if (codeHasBeenCompiled) {
-            if (!errors.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "No se puede ejecutar el código ya que se encontró uno o más errores");
-            }
-        } else {
-
+        if (!codeHasBeenCompiled) return;
+        if (!errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "No se puede ejecutar: el código tiene errores. Corrígelos primero.",
+                "Errores detectados", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+        mostrarSimulacionCadena();
     }//GEN-LAST:event_btn_EjecutarActionPerformed
 
     private void btn_ErroresActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_ErroresActionPerformed
@@ -1483,23 +1484,39 @@ public class Compilador extends javax.swing.JFrame {
             }
         }
 
-        // ── Simular ─────────────────────────────────────────────────────────
-        StringBuilder log = new StringBuilder();
-        boolean accepted;
-        if ("AFN".equals(tipoAutomata)) {
-            accepted = simulateAFN(cadena, estadoInicial, estadosFinales, delta, log);
-        } else {
-            accepted = simulateAFD(cadena, estadoInicial, estadosFinales, delta, log);
+        // ── Recopilar orden de estados para el diagrama ─────────────────────
+        java.util.List<String> stateOrder = new java.util.ArrayList<>();
+        for (SimboloDSL s : listaSimbolosGlobal) {
+            if (s.tipo == null) continue;
+            switch (s.tipo) {
+                case "Initial_State":
+                    if (!stateOrder.contains(s.nombre)) stateOrder.add(0, s.nombre); break;
+                case "State_Declared": case "Final_State":
+                    if (!stateOrder.contains(s.nombre)) stateOrder.add(s.nombre);    break;
+            }
         }
 
-        // ── Mostrar resultado ────────────────────────────────────────────────
-        javax.swing.JDialog dialog = new javax.swing.JDialog(this, "Simulación de Cadena — " + tipoAutomata, true);
-        dialog.setSize(640, 420);
-        dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new java.awt.BorderLayout());
+        // ── Simular ─────────────────────────────────────────────────────────
+        StringBuilder         log          = new StringBuilder();
+        java.util.Set<String> visitedOut   = new java.util.LinkedHashSet<>();
+        String[]              lastStateOut = {null};
+        boolean accepted;
+        if ("AFN".equals(tipoAutomata)) {
+            accepted = simulateAFN(cadena, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
+        } else {
+            accepted = simulateAFD(cadena, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
+        }
 
-        JPanel headerPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 12, 8));
-        headerPnl.setBackground(accepted ? new Color(0, 120, 50) : new Color(180, 0, 0));
+        // ── Construir diálogo combinado (diagrama + traza) ───────────────────
+        javax.swing.JDialog dialog = new javax.swing.JDialog(this,
+            "Ejecutar — " + tipoAutomata + "  |  \"" + cadena + "\"", true);
+        dialog.setSize(1080, 600);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new java.awt.BorderLayout(0, 0));
+
+        // Cabecera aceptado/rechazado
+        JPanel headerPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 14, 8));
+        headerPnl.setBackground(accepted ? new Color(0, 110, 45) : new Color(170, 0, 0));
         JLabel headerLbl = new JLabel(accepted
             ? "  ✅  Cadena ACEPTADA:  \"" + cadena + "\""
             : "  ❌  Cadena RECHAZADA:  \"" + cadena + "\"");
@@ -1507,14 +1524,44 @@ public class Compilador extends javax.swing.JFrame {
         headerLbl.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 14));
         headerPnl.add(headerLbl);
 
+        // Panel izquierdo: diagrama del autómata
+        PanelDiagramaAutomata diagramPanel = new PanelDiagramaAutomata(
+            tipoAutomata, stateOrder, estadoInicial, estadosFinales, delta,
+            visitedOut, lastStateOut[0], accepted);
+        diagramPanel.setPreferredSize(new java.awt.Dimension(560, 500));
+        javax.swing.JScrollPane diagramScroll = new javax.swing.JScrollPane(diagramPanel);
+        diagramScroll.setBorder(javax.swing.BorderFactory.createTitledBorder(
+            javax.swing.BorderFactory.createLineBorder(new Color(180, 180, 200)),
+            "Diagrama del Autómata"));
+
+        // Panel derecho: traza de simulación
         javax.swing.JTextArea stepsArea = new javax.swing.JTextArea(log.toString());
         stepsArea.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
         stepsArea.setEditable(false);
-        stepsArea.setBackground(new Color(248, 248, 250));
+        stepsArea.setBackground(new Color(248, 248, 252));
         stepsArea.setMargin(new java.awt.Insets(10, 14, 10, 14));
+        javax.swing.JScrollPane traceScroll = new javax.swing.JScrollPane(stepsArea);
+        traceScroll.setBorder(javax.swing.BorderFactory.createTitledBorder(
+            javax.swing.BorderFactory.createLineBorder(new Color(180, 180, 200)),
+            "Traza de Simulación"));
+        traceScroll.setPreferredSize(new java.awt.Dimension(460, 500));
+
+        javax.swing.JSplitPane split = new javax.swing.JSplitPane(
+            javax.swing.JSplitPane.HORIZONTAL_SPLIT, diagramScroll, traceScroll);
+        split.setDividerLocation(560);
+        split.setDividerSize(5);
+        split.setResizeWeight(0.6);
+
+        // Botón cerrar
+        javax.swing.JButton btnClose = new javax.swing.JButton("Cerrar");
+        btnClose.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 12));
+        btnClose.addActionListener(e -> dialog.dispose());
+        JPanel southPnl = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 6));
+        southPnl.add(btnClose);
 
         dialog.add(headerPnl, java.awt.BorderLayout.NORTH);
-        dialog.add(new javax.swing.JScrollPane(stepsArea), java.awt.BorderLayout.CENTER);
+        dialog.add(split,     java.awt.BorderLayout.CENTER);
+        dialog.add(southPnl,  java.awt.BorderLayout.SOUTH);
         dialog.setVisible(true);
     }
 
@@ -1522,8 +1569,12 @@ public class Compilador extends javax.swing.JFrame {
     private boolean simulateAFD(String cadena, String estadoInicial,
             java.util.Set<String> estadosFinales,
             java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
-            StringBuilder log) {
+            StringBuilder log,
+            java.util.Set<String> visitedOut,
+            String[] lastStateOut) {
         String current = estadoInicial;
+        if (visitedOut != null) visitedOut.add(current);
+
         log.append("Tipo de autómata : AFD\n");
         log.append("Cadena           : \"").append(cadena).append("\"\n");
         log.append("Estado inicial   : ").append(current).append("\n\n");
@@ -1539,13 +1590,16 @@ public class Compilador extends javax.swing.JFrame {
                 log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", "∅  (trampa)"));
                 log.append("\n❌  La cadena fue RECHAZADA — no existe δ(").append(current)
                    .append(", '").append(sym).append("').\n");
+                if (lastStateOut != null) lastStateOut[0] = current;
                 return false;
             }
             String next = targets.get(0);
             log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", next));
             current = next;
+            if (visitedOut != null) visitedOut.add(current);
         }
 
+        if (lastStateOut != null) lastStateOut[0] = current;
         log.append("\nEstado final alcanzado: ").append(current).append("\n");
         boolean accepted = estadosFinales.contains(current);
         if (accepted) {
@@ -1560,12 +1614,15 @@ public class Compilador extends javax.swing.JFrame {
     private boolean simulateAFN(String cadena, String estadoInicial,
             java.util.Set<String> estadosFinales,
             java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
-            StringBuilder log) {
+            StringBuilder log,
+            java.util.Set<String> visitedOut,
+            String[] lastStateOut) {
         log.append("Tipo de autómata : AFN (con cierre-ε)\n");
         log.append("Cadena           : \"").append(cadena).append("\"\n\n");
 
         java.util.Set<String> current = epsilonClosure(
             Collections.singleton(estadoInicial), delta);
+        if (visitedOut != null) visitedOut.addAll(current);
         log.append("Paso 0 : ε-cierre({").append(estadoInicial).append("}) = ")
            .append(current).append("\n\n");
 
@@ -1583,8 +1640,10 @@ public class Compilador extends javax.swing.JFrame {
                .append(" = ε-cierre(").append(rawNext).append(")")
                .append(" = ").append(next).append("\n");
             current = next;
+            if (visitedOut != null) visitedOut.addAll(current);
             if (current.isEmpty()) {
                 log.append("\nConjunto de estados vacío → Cadena RECHAZADA.\n");
+                if (lastStateOut != null) lastStateOut[0] = null;
                 return false;
             }
         }
@@ -1595,8 +1654,10 @@ public class Compilador extends javax.swing.JFrame {
             java.util.Set<String> inter = new java.util.LinkedHashSet<>(current);
             inter.retainAll(estadosFinales);
             log.append("✅  Contiene estado(s) final(es) ").append(inter).append(" → Cadena ACEPTADA.\n");
+            if (lastStateOut != null) lastStateOut[0] = inter.iterator().next();
         } else {
             log.append("❌  Ningún estado en ").append(current).append(" es final → Cadena RECHAZADA.\n");
+            if (lastStateOut != null) lastStateOut[0] = current.isEmpty() ? null : current.iterator().next();
         }
         return accepted;
     }
