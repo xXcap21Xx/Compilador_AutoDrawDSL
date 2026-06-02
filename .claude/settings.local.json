@@ -20,7 +20,10 @@
       "Bash(where ant *)",
       "Bash(dir \"C:\\\\Program Files\\\\NetBeans*\\\\ant\\\\bin\\\\ant.bat\")",
       "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/SimboloDSL.java src/sym.java src/Parser.java)",
-      "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/Compilador.java)"
+      "Bash(javac -cp \"lib/compilerTools-2.3.7.jar;lib/java-cup-11b-runtime.jar;lib/flatlaf-3.5.2.jar;build/classes\" -d build/classes src/Compilador.java)",
+      "Bash(javac -cp \"lib/*;src\" -d out src/compilerTools/*.java src/Compilador.java)",
+      "Bash(xargs grep -l \"automaton\\\\|state.*diagram\\\\|graph.*visual\")",
+      "Bash(grep -E \"\\\\.java$|^d\")"
     ]
   }
 }
