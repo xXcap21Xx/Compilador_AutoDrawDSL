@@ -246,8 +246,8 @@ public class Parser extends java_cup.runtime.lr_parser {
         String compActual   = (t != null) ? t.getLexicalComp() : "EOF";
         String compAnterior = (tokenAnterior != null) ? tokenAnterior.getLexicalComp() : "";
         String lexAnterior  = (tokenAnterior != null) ? tokenAnterior.getLexeme() : "";
-
         String mensaje;
+
         // ── Orden estructural y duplicados (antes del switch de contexto) ─────────
         if ("TIPO".equals(compActual) && automatonType != null) {
             mensaje = "[SinError 021] El tipo de autómata ya fue declarado como '"
@@ -261,6 +261,17 @@ public class Parser extends java_cup.runtime.lr_parser {
             mensaje = "[SinError 010] FINAL ya fue declarado. | ✏ Elimina la declaración duplicada de FINAL.";
         } else if ("ALFABETO".equals(compActual) && seenAlphabet) {
             mensaje = "[SinError 010] ALFABETO declarado más de una vez. | ✏ Solo debe haber un ALFABETO en el programa.";
+        } else if ("FINAL".equals(compActual) && initialState == null
+                && ("IDENTIFICADOR".equals(compAnterior) || "COLOR".equals(compAnterior))) {
+            mensaje = "[SinError 010] Después de INICIO " + lexAnterior
+                    + " se esperaba ';' para cerrar la declaración del estado inicial. | ✏ Correcto: INICIO "
+                    + lexAnterior + ";";
+        } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual))
+                && initialState != null && !seenFinal
+                && ("IDENTIFICADOR".equals(compAnterior) || "COLOR".equals(compAnterior))) {
+            mensaje = "[SinError 010] Después de FINAL " + lexAnterior
+                    + " se esperaba ';' para cerrar la declaración de estados finales. | ✏ Correcto: FINAL "
+                    + lexAnterior + ";";
         } else if ("FINAL".equals(compActual) && initialState == null) {
             mensaje = "[SinError 010] FINAL aparece antes de INICIO. | ✏ Orden: [ESTADOS { ... };]  INICIO q0;  FINAL q2;";
         } else if (("IDENTIFICADOR".equals(compActual) || "COLOR".equals(compActual))
@@ -287,9 +298,11 @@ public class Parser extends java_cup.runtime.lr_parser {
                 break;
             case "LLAVE_DER":
                 if (seenAlphabet) {
-                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS. | ✏ Correcto: ESTADOS { q1, q2 };";
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ESTADOS, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ESTADOS { q1, q2, ... };";
                 } else {
-                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' };";
+                    mensaje = "[SinError 010] Después de '}' se esperaba ';' para cerrar ALFABETO, pero se encontró '"
+                            + lexActual + "'. | ✏ Correcto: ALFABETO { 'a', 'b' };";
                 }
                 break;
             case "INICIO":
@@ -321,7 +334,8 @@ public class Parser extends java_cup.runtime.lr_parser {
                 }
                 break;
             case "CORCHETE_DER":
-                mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición. | ✏ Correcto: "
+                mensaje = "[SinError 010] Después de ']' se esperaba ';' para cerrar la transición, pero se encontró '"
+                        + lexActual + "'. | ✏ Correcto: "
                         + (pendingTransitionOrigin != null && pendingTransitionDest != null
                            && !pendingTransitionSymbols.isEmpty()
                             ? pendingTransitionOrigin + " -> " + pendingTransitionDest
@@ -425,7 +439,7 @@ public class Parser extends java_cup.runtime.lr_parser {
         }
         errors.add(new ErrorLSSL(1, mensaje, ref));
     }
-
+    
     public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
         Token t = (Token) s.value;
         String lexema = (t != null) ? t.getLexeme() : "<fin de archivo>";
@@ -512,8 +526,7 @@ class CUP$Parser$actions {
         root.addChild(sts);
         root.addChild(acc);
         root.addChild(trs);
-        RESULT = root;
-    
+        RESULT = root;    
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("Program",0, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-3)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -658,7 +671,9 @@ class CUP$Parser$actions {
             Math.abs(parser.errors.get(parser.errors.size() - 1).getLine()
                      - (tokenAnterior.getLine() + 1)) <= 5;
         if (!suppressCascade013) {
-            parser.errors.add(new ErrorLSSL(1, "[SinError 013] Error en la definición del ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' }; — verifica que cada símbolo tenga comilla de apertura y cierre, y que los símbolos estén separados por comas.", tokenAnterior));
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 013] Error en la definición del ALFABETO. | ✏ Correcto: ALFABETO { 'a', 'b' }; — verifica que cada símbolo tenga comilla de apertura y cierre, y que los símbolos estén separados por comas.",
+                tokenAnterior));
         }
         RESULT = new ASTNode("AlphabetDefinition", "ERROR");
     
@@ -1166,7 +1181,17 @@ class CUP$Parser$actions {
             {
               ASTNode RESULT =null;
 		
-        parser.errors.add(new ErrorLSSL(1, "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron", tokenAnterior));
+        boolean suppressCascade018 = !parser.errors.isEmpty()
+            && tokenAnterior != null
+            && parser.errors.get(parser.errors.size() - 1).getDescription() != null
+            && parser.errors.get(parser.errors.size() - 1).getDescription().contains("FONDO")
+            && Math.abs(parser.errors.get(parser.errors.size() - 1).getLine()
+                        - tokenAnterior.getLine()) <= 3;
+        if (!suppressCascade018) {
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 018] Después de FONDO se esperaba un color válido. | ✏ Colores aceptados: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+                tokenAnterior));
+        }
         RESULT = new ASTNode("BackgroundColor", "ERROR");
     
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("BackgroundDef",11, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
