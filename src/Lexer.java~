@@ -103,11 +103,11 @@ class Lexer implements java_cup.runtime.Scanner {
     "\1\7\1\10\1\11\1\12\2\13\1\14\11\15\1\16"+
     "\1\0\1\2\10\6\14\15\1\0\1\17\1\20\7\6"+
     "\15\15\6\6\1\21\1\15\1\22\6\15\3\6\1\23"+
-    "\1\24\1\6\3\15\2\6\1\25\1\26\1\15\1\6"+
+    "\1\24\1\6\3\15\3\6\1\25\1\15\1\6\1\26"+
     "\1\27\1\30";
 
   private static int [] zzUnpackAction() {
-    int [] result = new int[110];
+    int [] result = new int[111];
     int offset = 0;
     offset = zzUnpackAction(ZZ_ACTION_PACKED_0, offset, result);
     return result;
@@ -145,10 +145,10 @@ class Lexer implements java_cup.runtime.Scanner {
     "\0\u0ce4\0\u0d16\0\u0d48\0\u0d7a\0\u015e\0\u0dac\0\u0258\0\u0dde"+
     "\0\u0e10\0\u0e42\0\u0e74\0\u0ea6\0\u0ed8\0\u0f0a\0\u0f3c\0\u0f6e"+
     "\0\u015e\0\u015e\0\u0fa0\0\u0fd2\0\u1004\0\u1036\0\u1068\0\u109a"+
-    "\0\u015e\0\u015e\0\u10cc\0\u10fe\0\u015e\0\u015e";
+    "\0\u10cc\0\u015e\0\u10fe\0\u1130\0\u015e\0\u015e\0\u015e";
 
   private static int [] zzUnpackRowMap() {
-    int [] result = new int[110];
+    int [] result = new int[111];
     int offset = 0;
     offset = zzUnpackRowMap(ZZ_ROWMAP_PACKED_0, offset, result);
     return result;
@@ -257,12 +257,13 @@ class Lexer implements java_cup.runtime.Scanner {
     "\13\30\14\0\1\30\2\0\16\30\2\0\16\30\1\114"+
     "\4\30\14\0\1\14\2\0\15\14\1\154\2\0\23\14"+
     "\14\0\1\14\2\0\11\14\1\155\4\14\2\0\23\14"+
+    "\14\0\1\14\2\0\14\14\1\156\1\14\2\0\23\14"+
     "\14\0\1\30\2\0\16\30\2\0\10\30\1\113\12\30"+
-    "\14\0\1\14\2\0\12\14\1\156\3\14\2\0\23\14"+
+    "\14\0\1\14\2\0\12\14\1\157\3\14\2\0\23\14"+
     "\2\0";
 
   private static int [] zzUnpacktrans() {
-    int [] result = new int[4400];
+    int [] result = new int[4450];
     int offset = 0;
     offset = zzUnpacktrans(ZZ_TRANS_PACKED_0, offset, result);
     return result;
@@ -306,10 +307,10 @@ class Lexer implements java_cup.runtime.Scanner {
 
   private static final String ZZ_ATTRIBUTE_PACKED_0 =
     "\2\0\2\11\1\1\2\11\2\1\1\11\6\1\5\11"+
-    "\1\1\1\11\11\1\1\11\1\0\25\1\1\0\66\1";
+    "\1\1\1\11\11\1\1\11\1\0\25\1\1\0\67\1";
 
   private static int [] zzUnpackAttribute() {
-    int [] result = new int[110];
+    int [] result = new int[111];
     int offset = 0;
     offset = zzUnpackAttribute(ZZ_ATTRIBUTE_PACKED_0, offset, result);
     return result;
@@ -920,17 +921,17 @@ class Lexer implements java_cup.runtime.Scanner {
           // fall through
           case 44: break;
           case 21:
-            { return token(yytext(), "ESTADO",   yyline, yycolumn, sym.ESTADO);
+            { return token(yytext(), "INICIO",   yyline, yycolumn, sym.INICIO);
             }
           // fall through
           case 45: break;
           case 22:
-            { return token(yytext(), "INICIO",   yyline, yycolumn, sym.INICIO);
+            { return token(yytext(), "EPSILON", yyline, yycolumn, sym.EPSILON);
             }
           // fall through
           case 46: break;
           case 23:
-            { return token(yytext(), "EPSILON", yyline, yycolumn, sym.EPSILON);
+            { return token(yytext(), "ESTADOS",  yyline, yycolumn, sym.ESTADOS);
             }
           // fall through
           case 47: break;

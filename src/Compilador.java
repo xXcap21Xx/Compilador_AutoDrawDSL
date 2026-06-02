@@ -36,6 +36,8 @@ import javax.swing.table.DefaultTableModel;
  *
  * @author MiStErX
  */
+
+
 public class Compilador extends javax.swing.JFrame {
 
     /**
@@ -1259,6 +1261,17 @@ public class Compilador extends javax.swing.JFrame {
                     } else if (token.getLexicalComp().equals("ERROR_COLOR")) {
                         errors.add(new ErrorLSSL(1,
                             "[LexError 002] Color '" + token.getLexeme() + "' no es un color válido para FONDO. | ✏ Colores válidos: blanco, negro, rojo, azul, verde, amarillo, naranja, gris, rosa, morado, violeta, cyan, marron",
+                            token));
+                    } else if (token.getLexicalComp().equals("ERROR_DIGIT_IDENT")) {
+                        String lex = token.getLexeme();
+                        String letras  = lex.replaceAll("^[0-9]+", "");
+                        String digitos = lex.replaceAll("[^0-9].*", "");
+                        errors.add(new ErrorLSSL(1,
+                            "[LexError 003] El identificador '" + lex + "' no puede comenzar con dígito. | ✏ Los nombres deben comenzar con letra. Sugerencia: '" + letras + digitos + "'",
+                            token));
+                    } else if (token.getLexicalComp().equals("ERROR_DIGIT")) {
+                        errors.add(new ErrorLSSL(1,
+                            "[LexError 003] Se encontró el número '" + token.getLexeme() + "'. | ✏ Los nombres de estados y símbolos deben comenzar con letra, no con dígito.",
                             token));
                     }
                 }
