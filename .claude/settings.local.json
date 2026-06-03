@@ -26,7 +26,8 @@
       "Bash(grep -E \"\\\\.java$|^d\")",
       "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar\" src/Parser.java)",
       "Bash(javac -cp \"lib/java-cup-11b-runtime.jar;lib/compilerTools-2.3.7.jar;lib/flatlaf-3.5.2.jar;src\" src/Parser.java)",
-      "PowerShell(java *)"
+      "PowerShell(java *)",
+      "Bash(dir D:\\\\GitHub\\\\Compilador_AutoDrawDSL\\\\lib *)"
     ]
   }
 }
