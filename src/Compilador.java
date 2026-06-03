@@ -77,6 +77,7 @@ public class Compilador extends javax.swing.JFrame {
     private java.util.List<SimboloDSL> listaSimbolosGlobal = new java.util.ArrayList<>();
     private javax.swing.JComboBox<String> jComboBoxOperaciones;
     private javax.swing.JButton           btn_AplicarOperacion;
+    private javax.swing.JButton           btn_ConvertirAFD;
 
     /**
      * Creates new form Compilador
@@ -146,11 +147,17 @@ public class Compilador extends javax.swing.JFrame {
         btn_AplicarOperacion.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 11));
         btn_AplicarOperacion.addActionListener(e -> aplicarOperacion());
 
+        btn_ConvertirAFD = new javax.swing.JButton("Convertir AFN a AFD");
+        btn_ConvertirAFD.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 11));
+        btn_ConvertirAFD.addActionListener(e -> convertirAFNaAFD());
+
         menuBar.add(javax.swing.Box.createHorizontalGlue());
         menuBar.add(new javax.swing.JLabel("  Operación: "));
         menuBar.add(jComboBoxOperaciones);
         menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(6, 0)));
         menuBar.add(btn_AplicarOperacion);
+        menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
+        menuBar.add(btn_ConvertirAFD);
         menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
 
         setJMenuBar(menuBar);
@@ -1874,6 +1881,33 @@ public class Compilador extends javax.swing.JFrame {
         }
 
         new VentanaOperacion(this, op, result).setVisible(true);
+    }
+
+    private void convertirAFNaAFD() {
+        if (!codeHasBeenCompiled) {
+            JOptionPane.showMessageDialog(this, "Primero debes compilar el código.", "Sin compilar", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El código tiene errores. Corrígelos antes de convertir el autómata.", "Errores detectados", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Automata automaton = Automata.fromCompiled(listaSimbolosGlobal, panel_Codigo.getText());
+        if (!"AFN".equals(automaton.tipo)) {
+            JOptionPane.showMessageDialog(this,
+                "El autómata actual ya está declarado como AFD.\nLa conversión AFN a AFD solo aplica para TIPO AFN;",
+                "Conversión no necesaria", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        try {
+            Automata result = Automata.toDFA(automaton);
+            new VentanaOperacion(this, "Convertir AFN a AFD", result).setVisible(true);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Error al convertir el AFN a AFD:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════

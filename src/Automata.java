@@ -258,15 +258,17 @@ public class Automata {
     public static Automata toDFA(Automata nfa) {
         Automata dfa = new Automata();
         dfa.tipo     = "AFD";
-        dfa.alphabet = new ArrayList<>(nfa.alphabet);
-        dfa.alphabet.remove("ε");
+        for (String sym : nfa.alphabet) {
+            if (!isEpsilonSymbol(sym) && !dfa.alphabet.contains(sym)) dfa.alphabet.add(sym);
+        }
 
         Map<Set<String>, String> subsets = new LinkedHashMap<>();
         Queue<Set<String>>       queue   = new LinkedList<>();
         Set<String>              start   = epsClosure(Collections.singleton(nfa.initialState), nfa.delta);
+        start = new LinkedHashSet<>(start);
         subsets.put(start, setLabel(start));
         queue.add(start);
-        dfa.initialState = setLabel(start);
+        dfa.initialState = subsets.get(start);
 
         while (!queue.isEmpty()) {
             Set<String> cur     = queue.poll();
@@ -281,8 +283,11 @@ public class Automata {
                     if (tgt != null) rawNext.addAll(tgt);
                 }
                 Set<String> next = epsClosure(rawNext, nfa.delta);
-                if (next.isEmpty()) continue;
-                if (!subsets.containsKey(next)) { subsets.put(next, setLabel(next)); queue.add(next); }
+                next = new LinkedHashSet<>(next);
+                if (!subsets.containsKey(next)) {
+                    subsets.put(next, setLabel(next));
+                    queue.add(next);
+                }
                 dfa.delta.computeIfAbsent(curName, k -> new LinkedHashMap<>())
                          .computeIfAbsent(sym,     k -> new LinkedHashSet<>())
                          .add(subsets.get(next));
@@ -471,6 +476,10 @@ public class Automata {
         return ("AFD".equals(a.tipo) && !a.alphabet.contains("ε")) ? a : toDFA(a);
     }
 
+    private static boolean isEpsilonSymbol(String sym) {
+        return sym != null && ("ε".equals(sym) || "EPSILON".equalsIgnoreCase(sym));
+    }
+
     private static Set<String> epsClosure(Set<String> states, Map<String, Map<String, Set<String>>> delta) {
         Set<String>    closure = new LinkedHashSet<>(states);
         Deque<String>  stack   = new ArrayDeque<>(states);
@@ -534,7 +543,7 @@ public class Automata {
     private static String pairLabel(String a, String b) { return "(" + a + "," + b + ")"; }
 
     private static String setLabel(Set<String> s) {
-        if (s.isEmpty()) return "∅";
+        if (s.isEmpty()) return "VACIO";
         List<String> sorted = new ArrayList<>(s); Collections.sort(sorted);
         return "{" + String.join(",", sorted) + "}";
     }
