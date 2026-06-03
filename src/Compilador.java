@@ -74,6 +74,8 @@ public class Compilador extends javax.swing.JFrame {
     private Timer timerKeyReleased;
     private boolean codeHasBeenCompiled = false;
     private java.util.List<SimboloDSL> listaSimbolosGlobal = new java.util.ArrayList<>();
+    private javax.swing.JComboBox<String> jComboBoxOperaciones;
+    private javax.swing.JButton           btn_AplicarOperacion;
 
     /**
      * Creates new form Compilador
@@ -129,6 +131,27 @@ public class Compilador extends javax.swing.JFrame {
         menuAnalisis.addSeparator();
         menuAnalisis.add(itemSimular);
         menuBar.add(menuAnalisis);
+
+        // ── Combobox de operaciones sobre autómatas ──────────────────────────
+        jComboBoxOperaciones = new javax.swing.JComboBox<>(new String[]{
+            "Complemento (¬A)", "Kleene* (A*)", "Kleene+ (A+)",
+            "Unión (A∪B)", "Intersección (A∩B)", "Concatenación (A·B)", "Diferencia (A−B)"
+        });
+        jComboBoxOperaciones.setFont(new java.awt.Font("Consolas", java.awt.Font.PLAIN, 11));
+        jComboBoxOperaciones.setPreferredSize(new java.awt.Dimension(210, 24));
+        jComboBoxOperaciones.setMaximumSize(new java.awt.Dimension(210, 24));
+
+        btn_AplicarOperacion = new javax.swing.JButton("▶ Aplicar");
+        btn_AplicarOperacion.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 11));
+        btn_AplicarOperacion.addActionListener(e -> aplicarOperacion());
+
+        menuBar.add(javax.swing.Box.createHorizontalGlue());
+        menuBar.add(new javax.swing.JLabel("  Operación: "));
+        menuBar.add(jComboBoxOperaciones);
+        menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(6, 0)));
+        menuBar.add(btn_AplicarOperacion);
+        menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
+
         setJMenuBar(menuBar);
     }
 
@@ -399,6 +422,26 @@ public class Compilador extends javax.swing.JFrame {
         if (isAFD && transitionCount > 0)
             checkDeterminism(root);
 
+        // SemError 012: AFD con épsilon — incompatible por definición
+        if (isAFD && hasEpsilon) {
+            Token epsTok = null;
+            for (SimboloDSL s : listaSimbolosGlobal) {
+                if ("Epsilon_Symbol".equals(s.tipo)) {
+                    epsTok = new Token("EPSILON", "EPSILON", s.linea, s.columna);
+                    break;
+                }
+            }
+            errors.add(new ErrorLSSL(1,
+                "[SemError 012] Un AFD no puede tener transiciones ε. EPSILON solo es válido en AFN. | ✏ Cambia a TIPO AFN;  o elimina EPSILON del alfabeto y sus transiciones ε.",
+                epsTok));
+        }
+
+        // SemError 013: AFN declarado pero el autómata es determinista → sugerencia
+        if (!isAFD && !hasEpsilon && transitionCount > 0 && checkIfActuallyDeterministic(root))
+            errors.add(new ErrorLSSL(1,
+                "[SemError 013] El autómata declarado como AFN es en realidad determinista (sin ε y sin bifurcaciones). | ✏ Considera cambiarlo a TIPO AFD;",
+                null));
+
         // SemError 011 requiere un AST completo. Si hay errores sintácticos, el modo
         // pánico del parser pudo haber descartado transiciones, haciendo que estados
         // realmente usados aparezcan como "no usados" en el AST. Se omite en ese caso.
@@ -406,6 +449,8 @@ public class Compilador extends javax.swing.JFrame {
                 e -> e.getDescription() != null && e.getDescription().contains("SinError"));
         if (!hasSyntaxErrors) {
             checkUnusedStates(root, initialStates, finalStates);
+            if (transitionCount > 0)
+                checkInitialAndFinalInTransitions(root, initialStates, finalStates);
         }
     }
 
@@ -506,6 +551,35 @@ public class Compilador extends javax.swing.JFrame {
             checkDeterminismNode(child, seenSymbols, counter);
     }
 
+    /** Retorna true si ningún par (estado, símbolo) tiene más de un destino — el autómata es determinista. */
+    private boolean checkIfActuallyDeterministic(ASTNode root) {
+        HashMap<String, Set<String>> seen = new HashMap<>();
+        return isDeterministicNode(root, seen);
+    }
+
+    private boolean isDeterministicNode(ASTNode node, HashMap<String, Set<String>> seen) {
+        if (node == null) return true;
+        if ("Transition".equals(node.label)) {
+            String origin = null;
+            Set<String> usedSymbols = new HashSet<>();
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label))                   origin = child.value;
+                else if ("TransitionSymbols".equals(child.label)) gatherSymbols(child, usedSymbols);
+            }
+            if (origin != null) {
+                Set<String> existing = seen.computeIfAbsent(origin, k -> new HashSet<>());
+                for (String sym : usedSymbols) {
+                    if (!existing.add(sym)) return false;
+                }
+            }
+            return true;
+        }
+        for (ASTNode child : node.children) {
+            if (!isDeterministicNode(child, seen)) return false;
+        }
+        return true;
+    }
+
     /** B2: Detecta estados declarados con ESTADO que nunca aparecen en ninguna transición. */
     private void checkUnusedStates(ASTNode root, Set<String> initialStates, Set<String> finalStates) {
         Set<String> usedInTransitions = new HashSet<>();
@@ -522,6 +596,43 @@ public class Compilador extends javax.swing.JFrame {
                     locTok));
             }
         }
+    }
+
+    /** SemError 014/015: estado inicial o final que no aparece en ninguna transición. */
+    private void checkInitialAndFinalInTransitions(ASTNode root,
+            Set<String> initialStates, Set<String> finalStates) {
+        Set<String> usedInTransitions = new HashSet<>();
+        collectTransitionStates(root, usedInTransitions);
+
+        for (String init : initialStates) {
+            if (!usedInTransitions.contains(init)) {
+                Token tok = findStateToken(init);
+                errors.add(new ErrorLSSL(1,
+                    "[SemError 014] El estado inicial '" + init + "' no aparece en ninguna transición. | ✏ Agrega al menos una transición desde o hacia '" + init + "'.",
+                    tok));
+            }
+        }
+
+        for (String fin : finalStates) {
+            if (!usedInTransitions.contains(fin)) {
+                Token tok = findStateToken(fin);
+                errors.add(new ErrorLSSL(1,
+                    "[SemError 015] El estado final '" + fin + "' no aparece en ninguna transición. | ✏ Agrega al menos una transición desde o hacia '" + fin + "'.",
+                    tok));
+            }
+        }
+    }
+
+    private Token findStateToken(String stateName) {
+        for (SimboloDSL s : listaSimbolosGlobal) {
+            if (stateName.equals(s.nombre) && (
+                    "Initial_State".equals(s.tipo) ||
+                    "Final_State".equals(s.tipo)   ||
+                    "State_Declared".equals(s.tipo))) {
+                return new Token(stateName, "IDENTIFICADOR", s.linea, s.columna);
+            }
+        }
+        return null;
     }
 
     private void collectTransitionStates(ASTNode node, Set<String> states) {
@@ -1505,6 +1616,72 @@ public class Compilador extends javax.swing.JFrame {
                 }
             }
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // OPERACIONES SOBRE AUTÓMATAS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void aplicarOperacion() {
+        if (!codeHasBeenCompiled) {
+            JOptionPane.showMessageDialog(this, "Primero debes compilar el código.", "Sin compilar", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!errors.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El código tiene errores. Corrígelos antes de aplicar operaciones.", "Errores detectados", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String op       = (String) jComboBoxOperaciones.getSelectedItem();
+        boolean binary  = op.contains("∪") || op.contains("∩") || op.contains("·") || op.contains("−");
+
+        // Autómata A = compilación actual
+        Automata automatonA = Automata.fromCompiled(listaSimbolosGlobal, panel_Codigo.getText());
+
+        // Autómata B = segundo archivo (solo para operaciones binarias)
+        Automata automatonB = null;
+        if (binary) {
+            javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+            fc.setDialogTitle("Cargar segundo autómata (B) — archivo .draw");
+            fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Autómatas DSL (*.draw)", "draw"));
+            if (fc.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) return;
+            try {
+                String content = new String(
+                    java.nio.file.Files.readAllBytes(fc.getSelectedFile().toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+                automatonB = Automata.fromText(content);
+                if (automatonB.initialState == null) {
+                    JOptionPane.showMessageDialog(this,
+                        "El archivo seleccionado no tiene un INICIO declarado.\nVerifica que sea un autómata válido.",
+                        "Archivo inválido", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this,
+                    "Error al leer el archivo:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
+        Automata result;
+        try {
+            switch (op) {
+                case "Complemento (¬A)":    result = Automata.complement(automatonA);                break;
+                case "Kleene* (A*)":         result = Automata.kleeneStar(automatonA);               break;
+                case "Kleene+ (A+)":         result = Automata.kleenePlus(automatonA);               break;
+                case "Unión (A∪B)":         result = Automata.union(automatonA, automatonB);         break;
+                case "Intersección (A∩B)":  result = Automata.intersection(automatonA, automatonB);  break;
+                case "Concatenación (A·B)":  result = Automata.concatenation(automatonA, automatonB); break;
+                case "Diferencia (A−B)":    result = Automata.difference(automatonA, automatonB);    break;
+                default: return;
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Error al aplicar la operación:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        new VentanaOperacion(this, op, result).setVisible(true);
     }
 
     // ══════════════════════════════════════════════════════════════════════
