@@ -420,8 +420,10 @@ public class Compilador extends javax.swing.JFrame {
         if (transitionCount == 0)
             errors.add(new ErrorLSSL(1, "[SemError 009] No se encontró ninguna transición en el programa. | ✏ Agrega al menos una: q0 -> q1 ['a'];", null));
 
-        if (isAFD && transitionCount > 0)
+        if (isAFD && transitionCount > 0) {
             checkDeterminism(root);
+            checkAFDCompleteness(root, declaredStates, alphabetSymbols);
+        }
 
         // SemError 012: AFD con épsilon — incompatible por definición
         if (isAFD && hasEpsilon) {
@@ -478,6 +480,15 @@ public class Compilador extends javax.swing.JFrame {
             gatherSymbols(child, out);
     }
 
+    /** Recoge símbolos preservando el orden y las repeticiones. */
+    private void gatherSymbolsList(ASTNode node, java.util.List<String> out) {
+        if (node == null) return;
+        if ("Symbol".equals(node.label) && node.value != null)
+            out.add(node.value);
+        for (ASTNode child : node.children)
+            gatherSymbolsList(child, out);
+    }
+
     /** Recorre el AST validando cada nodo Transition; retorna el total encontrado. */
     private int validateTransitions(ASTNode node, Set<String> declaredStates,
                                     Set<String> alphabetSymbols, boolean hasEpsilon,
@@ -485,13 +496,26 @@ public class Compilador extends javax.swing.JFrame {
         if (node == null) return 0;
         if ("Transition".equals(node.label)) {
             String origin = null, destination = null;
-            Set<String> usedSymbols = new HashSet<>();
+            java.util.List<String> transitionSymbols = new java.util.ArrayList<>();
             for (ASTNode child : node.children) {
                 if ("From".equals(child.label))                   origin      = child.value;
                 else if ("To".equals(child.label))                destination = child.value;
-                else if ("TransitionSymbols".equals(child.label)) gatherSymbols(child, usedSymbols);
+                else if ("TransitionSymbols".equals(child.label)) gatherSymbolsList(child, transitionSymbols);
             }
+            Set<String> usedSymbols = new HashSet<>(transitionSymbols);
             Token locTok = findTransitionToken(origin, destination, counter);
+            Set<String> seenInTransition = new HashSet<>();
+            Set<String> duplicateSymbols = new HashSet<>();
+            for (String sym : transitionSymbols) {
+                if (!seenInTransition.add(sym)) duplicateSymbols.add(sym);
+            }
+            for (String sym : duplicateSymbols) {
+                String msg = "[SemError 018] Símbolo duplicado '" + sym + "' en la transición "
+                        + origin + " -> " + destination + ". | ✏ Declara cada símbolo una sola vez: "
+                        + origin + " -> " + destination + " ['" + sym + "'];";
+                if (reportedErrors.add(msg))
+                    errors.add(new ErrorLSSL(1, msg, locTok));
+            }
             if (origin != null && !declaredStates.contains(origin)) {
                 String msg = "[SemError 005] El estado origen '" + origin + "' no fue declarado. | ✏ Agrégalo en: ESTADOS { " + origin + ", ... };  (o INICIO " + origin + "; si es el estado inicial)";
                 if (reportedErrors.add(msg))
@@ -555,6 +579,58 @@ public class Compilador extends javax.swing.JFrame {
             checkDeterminismNode(child, seenSymbols, counter);
     }
 
+    /** Verifica que un AFD tenga definida cada combinación (estado, símbolo). */
+    private void checkAFDCompleteness(ASTNode root, Set<String> declaredStates,
+                                      Set<String> alphabetSymbols) {
+        if (declaredStates.isEmpty() || alphabetSymbols.isEmpty()) return;
+
+        Set<String> afdAlphabet = new HashSet<>();
+        for (String sym : alphabetSymbols) {
+            if (!"EPSILON".equals(sym) && !"ε".equals(sym)) afdAlphabet.add(sym);
+        }
+        if (afdAlphabet.isEmpty()) return;
+
+        Map<String, Set<String>> defined = new HashMap<>();
+        collectDefinedTransitionPairs(root, defined);
+
+        for (String state : declaredStates) {
+            Set<String> definedForState = defined.getOrDefault(state, Collections.emptySet());
+            Set<String> missing = new java.util.TreeSet<>(afdAlphabet);
+            missing.removeAll(definedForState);
+            if (!missing.isEmpty()) {
+                Token tok = findStateToken(state);
+                errors.add(new ErrorLSSL(1,
+                    "[SemError 019] AFD incompleto: al estado '" + state
+                    + "' le faltan transiciones para símbolo(s) " + missing
+                    + ". | ✏ Define una transición por cada símbolo del alfabeto, por ejemplo: "
+                    + state + " -> destino ['" + missing.iterator().next() + "'];",
+                    tok));
+            }
+        }
+    }
+
+    /** Construye estado -> símbolos definidos en sus transiciones salientes. */
+    private void collectDefinedTransitionPairs(ASTNode node, Map<String, Set<String>> out) {
+        if (node == null) return;
+        if ("Transition".equals(node.label)) {
+            String origin = null;
+            Set<String> symbols = new HashSet<>();
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label)) origin = child.value;
+                else if ("TransitionSymbols".equals(child.label)) gatherSymbols(child, symbols);
+            }
+            if (origin != null) {
+                Set<String> stateSymbols = out.computeIfAbsent(origin, k -> new HashSet<>());
+                for (String sym : symbols) {
+                    if (!"EPSILON".equals(sym) && !"ε".equals(sym)) stateSymbols.add(sym);
+                }
+            }
+            return;
+        }
+        for (ASTNode child : node.children)
+            collectDefinedTransitionPairs(child, out);
+    }
+
     /** Retorna true si ningún par (estado, símbolo) tiene más de un destino — el autómata es determinista. */
     private boolean checkIfActuallyDeterministic(ASTNode root) {
         HashMap<String, Set<String>> seen = new HashMap<>();
@@ -584,22 +660,49 @@ public class Compilador extends javax.swing.JFrame {
         return true;
     }
 
-    /** B2: Detecta estados declarados con ESTADO que nunca aparecen en ninguna transición. */
+    /** B2: Detecta estados declarados que no se conectan con el autómata. */
     private void checkUnusedStates(ASTNode root, Set<String> initialStates, Set<String> finalStates) {
         Set<String> usedInTransitions = new HashSet<>();
-        collectTransitionStates(root, usedInTransitions);
+        Set<String> connectedInTransitions = new HashSet<>();
+        collectTransitionUsage(root, usedInTransitions, connectedInTransitions);
         for (SimboloDSL sym : listaSimbolosGlobal) {
             if (!"State_Declared".equals(sym.tipo)) continue;
             String state = sym.nombre;
-            if (!usedInTransitions.contains(state)
-                    && !initialStates.contains(state)
-                    && !finalStates.contains(state)) {
+            if (initialStates.contains(state) || finalStates.contains(state)) continue;
+            boolean neverUsed = !usedInTransitions.contains(state);
+            boolean onlySelfLoop = usedInTransitions.contains(state)
+                    && !connectedInTransitions.contains(state);
+            if (neverUsed || onlySelfLoop) {
                 Token locTok = new Token(state, "IDENTIFICADOR", sym.linea, sym.columna);
+                String detail = neverUsed
+                    ? "no se usa en ninguna transición"
+                    : "solo aparece en transiciones hacia sí mismo";
                 errors.add(new ErrorLSSL(1,
-                    "[SemError 011] El estado '" + state + "' está declarado pero no se usa en ninguna transición. | ✏ ¿Olvidaste agregar transiciones desde o hacia '" + state + "'?",
+                    "[SemError 011] El estado '" + state + "' está declarado pero " + detail + ". | ✏ Conéctalo con otro estado mediante una transición de entrada o salida, o elimínalo de ESTADOS.",
                     locTok));
             }
         }
+    }
+
+    /** Registra uso total y uso conectado; los self-loops no cuentan como conexión real. */
+    private void collectTransitionUsage(ASTNode node, Set<String> used, Set<String> connected) {
+        if (node == null) return;
+        if ("Transition".equals(node.label)) {
+            String origin = null, destination = null;
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label))       origin      = child.value;
+                else if ("To".equals(child.label))    destination = child.value;
+            }
+            if (origin != null)      used.add(origin);
+            if (destination != null) used.add(destination);
+            if (origin != null && destination != null && !origin.equals(destination)) {
+                connected.add(origin);
+                connected.add(destination);
+            }
+            return;
+        }
+        for (ASTNode child : node.children)
+            collectTransitionUsage(child, used, connected);
     }
 
     /** SemError 014/015: estado inicial o final que no aparece en ninguna transición. */
@@ -1965,12 +2068,17 @@ public class Compilador extends javax.swing.JFrame {
         String input         = panel_Codigo.getText();
         String tipoAutomata  = "AFD";
         String estadoInicial = null;
+        java.util.List<String> alphabet = new java.util.ArrayList<>();
         java.util.Set<String> estadosFinales = new java.util.LinkedHashSet<>();
 
         for (SimboloDSL s : listaSimbolosGlobal) {
             if (s.tipo == null) continue;
             switch (s.tipo) {
                 case "Tipo_Automata_AFN": tipoAutomata = "AFN"; break;
+                case "Alphabet_Symbol":
+                    String sym = s.nombre.replace("'", "");
+                    if (!alphabet.contains(sym)) alphabet.add(sym);
+                    break;
                 case "Initial_State":  estadoInicial = s.nombre; break;
                 case "Final_State":    estadosFinales.add(s.nombre); break;
             }
@@ -2014,11 +2122,18 @@ public class Compilador extends javax.swing.JFrame {
         StringBuilder         log          = new StringBuilder();
         java.util.Set<String> visitedOut   = new java.util.LinkedHashSet<>();
         String[]              lastStateOut = {null};
+        String[]              tokenError   = {null};
+        java.util.List<String> inputSymbols = tokenizeInputSymbols(cadena, alphabet, tokenError);
         boolean accepted;
-        if ("AFN".equals(tipoAutomata)) {
-            accepted = simulateAFN(cadena, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
+        if (inputSymbols == null) {
+            accepted = false;
+            visitedOut.add(estadoInicial);
+            lastStateOut[0] = estadoInicial;
+            appendTokenizationFailureLog(tipoAutomata, cadena, estadoInicial, alphabet, tokenError[0], log);
+        } else if ("AFN".equals(tipoAutomata)) {
+            accepted = simulateAFN(cadena, inputSymbols, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
         } else {
-            accepted = simulateAFD(cadena, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
+            accepted = simulateAFD(cadena, inputSymbols, estadoInicial, estadosFinales, delta, log, visitedOut, lastStateOut);
         }
 
         // ── Construir diálogo combinado (diagrama + traza) ───────────────────
@@ -2080,7 +2195,7 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     /** Simulación determinista AFD paso a paso. */
-    private boolean simulateAFD(String cadena, String estadoInicial,
+    private boolean simulateAFD(String cadena, java.util.List<String> inputSymbols, String estadoInicial,
             java.util.Set<String> estadosFinales,
             java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
             StringBuilder log,
@@ -2091,24 +2206,25 @@ public class Compilador extends javax.swing.JFrame {
 
         log.append("Tipo de autómata : AFD\n");
         log.append("Cadena           : \"").append(cadena).append("\"\n");
+        log.append("Símbolos leídos  : ").append(inputSymbols).append("\n");
         log.append("Estado inicial   : ").append(current).append("\n\n");
-        log.append(String.format("%-6s %-18s %-6s %-18s%n", "Paso", "Estado actual", "Símbolo", "Estado siguiente"));
+        log.append(String.format("%-6s %-18s %-12s %-18s%n", "Paso", "Estado actual", "Símbolo", "Estado siguiente"));
         log.append("─────────────────────────────────────────────\n");
 
-        for (int i = 0; i < cadena.length(); i++) {
-            String sym = String.valueOf(cadena.charAt(i));
+        for (int i = 0; i < inputSymbols.size(); i++) {
+            String sym = inputSymbols.get(i);
             java.util.List<String> targets = delta
                 .getOrDefault(current, Collections.emptyMap()).get(sym);
 
             if (targets == null || targets.isEmpty()) {
-                log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", "∅  (trampa)"));
+                log.append(String.format("%-6d %-18s %-12s %-18s%n", i + 1, current, "'" + sym + "'", "∅  (trampa)"));
                 log.append("\n❌  La cadena fue RECHAZADA — no existe δ(").append(current)
                    .append(", '").append(sym).append("').\n");
                 if (lastStateOut != null) lastStateOut[0] = current;
                 return false;
             }
             String next = targets.get(0);
-            log.append(String.format("%-6d %-18s %-6s %-18s%n", i + 1, current, "'" + sym + "'", next));
+            log.append(String.format("%-6d %-18s %-12s %-18s%n", i + 1, current, "'" + sym + "'", next));
             current = next;
             if (visitedOut != null) visitedOut.add(current);
         }
@@ -2125,7 +2241,7 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     /** Simulación no determinista AFN con cierre-ε. */
-    private boolean simulateAFN(String cadena, String estadoInicial,
+    private boolean simulateAFN(String cadena, java.util.List<String> inputSymbols, String estadoInicial,
             java.util.Set<String> estadosFinales,
             java.util.Map<String, java.util.Map<String, java.util.List<String>>> delta,
             StringBuilder log,
@@ -2133,6 +2249,7 @@ public class Compilador extends javax.swing.JFrame {
             String[] lastStateOut) {
         log.append("Tipo de autómata : AFN (con cierre-ε)\n");
         log.append("Cadena           : \"").append(cadena).append("\"\n\n");
+        log.append("Símbolos leídos  : ").append(inputSymbols).append("\n\n");
 
         java.util.Set<String> current = epsilonClosure(
             Collections.singleton(estadoInicial), delta);
@@ -2140,8 +2257,8 @@ public class Compilador extends javax.swing.JFrame {
         log.append("Paso 0 : ε-cierre({").append(estadoInicial).append("}) = ")
            .append(current).append("\n\n");
 
-        for (int i = 0; i < cadena.length(); i++) {
-            String sym = String.valueOf(cadena.charAt(i));
+        for (int i = 0; i < inputSymbols.size(); i++) {
+            String sym = inputSymbols.get(i);
             java.util.Set<String> rawNext = new java.util.LinkedHashSet<>();
             for (String state : current) {
                 java.util.List<String> targets =
@@ -2174,6 +2291,50 @@ public class Compilador extends javax.swing.JFrame {
             if (lastStateOut != null) lastStateOut[0] = current.isEmpty() ? null : current.iterator().next();
         }
         return accepted;
+    }
+
+    /** Divide la cadena de entrada usando los símbolos del alfabeto, priorizando el más largo. */
+    private java.util.List<String> tokenizeInputSymbols(String input, java.util.Collection<String> alphabet,
+            String[] errorOut) {
+        java.util.List<String> symbols = new java.util.ArrayList<>();
+        java.util.List<String> candidates = new java.util.ArrayList<>();
+        for (String sym : alphabet) {
+            if (sym == null || sym.isEmpty()) continue;
+            if ("ε".equals(sym) || "EPSILON".equalsIgnoreCase(sym)) continue;
+            if (!candidates.contains(sym)) candidates.add(sym);
+        }
+        candidates.sort((a, b) -> Integer.compare(b.length(), a.length()));
+
+        int pos = 0;
+        while (pos < input.length()) {
+            String matched = null;
+            for (String candidate : candidates) {
+                if (input.startsWith(candidate, pos)) {
+                    matched = candidate;
+                    break;
+                }
+            }
+            if (matched == null) {
+                if (errorOut != null && errorOut.length > 0) {
+                    errorOut[0] = "No se pudo leer un símbolo del alfabeto desde la posición "
+                            + (pos + 1) + " cerca de \"" + input.substring(pos) + "\".";
+                }
+                return null;
+            }
+            symbols.add(matched);
+            pos += matched.length();
+        }
+        return symbols;
+    }
+
+    private void appendTokenizationFailureLog(String tipoAutomata, String cadena, String estadoInicial,
+            java.util.List<String> alphabet, String error, StringBuilder log) {
+        log.append("Tipo de autómata : ").append(tipoAutomata).append("\n");
+        log.append("Cadena           : \"").append(cadena).append("\"\n");
+        log.append("Estado inicial   : ").append(estadoInicial).append("\n");
+        log.append("Alfabeto         : ").append(alphabet).append("\n\n");
+        log.append("❌  La cadena fue RECHAZADA — ").append(error).append("\n");
+        log.append("✏  Verifica que la entrada pueda dividirse en símbolos completos del ALFABETO.\n");
     }
 
     /** Calcula el cierre-ε de un conjunto de estados. */

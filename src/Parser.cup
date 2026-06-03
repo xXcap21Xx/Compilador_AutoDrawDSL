@@ -421,6 +421,35 @@ SymbolVal ::= COMILLA_SIMPLE Ident:id COMILLA_SIMPLE
             parser.pendingTransitionSymbols.add("'" + t.getLexeme() + "'");
         RESULT = new ASTNode("Symbol", t.getLexeme());
     :}
+    | COMILLA_SIMPLE:open COMILLA_SIMPLE
+    {:
+        Token t = (Token)open;
+        if (parser.pendingTransitionOrigin != null && parser.pendingTransitionDest != null) {
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 027] Símbolo vacío en la transición: se encontró ''. | ✏ Escribe un símbolo entre las comillas, por ejemplo: q0 -> q1 ['a'];  o usa EPSILON sin comillas: q0 -> q1 [EPSILON];",
+                t));
+        } else {
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 027] Símbolo vacío: se encontró ''. | ✏ Escribe un símbolo entre las comillas, por ejemplo: 'a';",
+                t));
+        }
+        RESULT = new ASTNode("ErrorSymbol", "EMPTY_QUOTED_SYMBOL");
+    :}
+    | Ident:id
+    {:
+        Token t = (Token)id;
+        if (parser.pendingTransitionOrigin != null && parser.pendingTransitionDest != null) {
+            parser.errors.add(new ErrorLSSL(1,
+                "[SinError 028] El símbolo '" + t.getLexeme() + "' en la transición no está entre comillas. | ✏ Correcto: "
+                + parser.pendingTransitionOrigin + " -> " + parser.pendingTransitionDest
+                + " ['" + t.getLexeme() + "'];",
+                t));
+            RESULT = new ASTNode("ErrorSymbol", t.getLexeme());
+        } else {
+            parser.addSymbol(t.getLexeme(), "Alphabet_Symbol", t);
+            RESULT = new ASTNode("Symbol", t.getLexeme());
+        }
+    :}
     | EPSILON:e
     {:
         parser.addSymbol("EPSILON", "Epsilon_Symbol", (Token)e);
