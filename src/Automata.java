@@ -347,20 +347,29 @@ public class Automata {
     private boolean simulateDFA(String input, StringBuilder log, Set<String> visited, String[] last) {
         String cur = initialState;
         if (visited != null) visited.add(cur);
+        String[] tokenError = {null};
+        List<String> inputSymbols = tokenizeInputSymbols(input, tokenError);
         log.append("Tipo  : AFD\nCadena: \"").append(input).append("\"\nInicio: ").append(cur).append("\n\n");
-        log.append(String.format("%-6s %-20s %-8s %-20s%n", "Paso", "Estado", "Símbolo", "Siguiente"));
+        if (inputSymbols == null) {
+            log.append("Alfabeto: ").append(alphabet).append("\n\n");
+            log.append("❌ RECHAZADA — ").append(tokenError[0]).append("\n");
+            if (last != null) last[0] = cur;
+            return false;
+        }
+        log.append("Símbolos leídos: ").append(inputSymbols).append("\n\n");
+        log.append(String.format("%-6s %-20s %-12s %-20s%n", "Paso", "Estado", "Símbolo", "Siguiente"));
         log.append("──────────────────────────────────────────────────\n");
-        for (int i = 0; i < input.length(); i++) {
-            String sym = String.valueOf(input.charAt(i));
+        for (int i = 0; i < inputSymbols.size(); i++) {
+            String sym = inputSymbols.get(i);
             Set<String> tgt = delta.getOrDefault(cur, Collections.emptyMap()).get(sym);
             if (tgt == null || tgt.isEmpty()) {
-                log.append(String.format("%-6d %-20s %-8s ∅ (trampa)%n", i+1, cur, "'"+sym+"'"));
+                log.append(String.format("%-6d %-20s %-12s ∅ (trampa)%n", i+1, cur, "'"+sym+"'"));
                 log.append("\n❌ RECHAZADA — no existe δ(").append(cur).append(", '").append(sym).append("').\n");
                 if (last != null) last[0] = cur;
                 return false;
             }
             String next = tgt.iterator().next();
-            log.append(String.format("%-6d %-20s %-8s %-20s%n", i+1, cur, "'"+sym+"'", next));
+            log.append(String.format("%-6d %-20s %-12s %-20s%n", i+1, cur, "'"+sym+"'", next));
             cur = next;
             if (visited != null) visited.add(cur);
         }
@@ -373,11 +382,20 @@ public class Automata {
 
     private boolean simulateNFA(String input, StringBuilder log, Set<String> visited, String[] last) {
         log.append("Tipo  : AFN (con cierre-ε)\nCadena: \"").append(input).append("\"\n\n");
+        String[] tokenError = {null};
+        List<String> inputSymbols = tokenizeInputSymbols(input, tokenError);
+        if (inputSymbols == null) {
+            log.append("Alfabeto: ").append(alphabet).append("\n\n");
+            log.append("❌ RECHAZADA — ").append(tokenError[0]).append("\n");
+            if (last != null) last[0] = initialState;
+            return false;
+        }
+        log.append("Símbolos leídos: ").append(inputSymbols).append("\n\n");
         Set<String> cur = epsClosure(Collections.singleton(initialState), delta);
         if (visited != null) visited.addAll(cur);
         log.append("Paso 0: ε-cierre({").append(initialState).append("}) = ").append(cur).append("\n\n");
-        for (int i = 0; i < input.length(); i++) {
-            String sym = String.valueOf(input.charAt(i));
+        for (int i = 0; i < inputSymbols.size(); i++) {
+            String sym = inputSymbols.get(i);
             Set<String> rawNext = new LinkedHashSet<>();
             for (String st : cur) {
                 Set<String> tgt = delta.getOrDefault(st, Collections.emptyMap()).get(sym);
@@ -400,6 +418,38 @@ public class Automata {
             if (last != null) last[0] = cur.isEmpty() ? null : cur.iterator().next();
         }
         return ok;
+    }
+
+    private List<String> tokenizeInputSymbols(String input, String[] errorOut) {
+        List<String> symbols = new ArrayList<>();
+        List<String> candidates = new ArrayList<>();
+        for (String sym : alphabet) {
+            if (sym == null || sym.isEmpty()) continue;
+            if ("ε".equals(sym) || "EPSILON".equalsIgnoreCase(sym)) continue;
+            if (!candidates.contains(sym)) candidates.add(sym);
+        }
+        candidates.sort((a, b) -> Integer.compare(b.length(), a.length()));
+
+        int pos = 0;
+        while (pos < input.length()) {
+            String matched = null;
+            for (String candidate : candidates) {
+                if (input.startsWith(candidate, pos)) {
+                    matched = candidate;
+                    break;
+                }
+            }
+            if (matched == null) {
+                if (errorOut != null && errorOut.length > 0) {
+                    errorOut[0] = "no se pudo leer un símbolo del alfabeto desde la posición "
+                            + (pos + 1) + " cerca de \"" + input.substring(pos) + "\".";
+                }
+                return null;
+            }
+            symbols.add(matched);
+            pos += matched.length();
+        }
+        return symbols;
     }
 
     // ══════════════════════════════════════════════════════════════════════
