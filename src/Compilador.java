@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -449,8 +450,11 @@ public class Compilador extends javax.swing.JFrame {
                 e -> e.getDescription() != null && e.getDescription().contains("SinError"));
         if (!hasSyntaxErrors) {
             checkUnusedStates(root, initialStates, finalStates);
-            if (transitionCount > 0)
+            if (transitionCount > 0) {
                 checkInitialAndFinalInTransitions(root, initialStates, finalStates);
+                checkReachabilityFromInitial(root, initialStates, finalStates);
+                checkUnreachableFinalStates(root, initialStates, finalStates);
+            }
         }
     }
 
@@ -621,6 +625,91 @@ public class Compilador extends javax.swing.JFrame {
                     tok));
             }
         }
+    }
+
+    /**
+     * SemError 016: BFS desde el estado inicial. Si ningún estado final es alcanzable,
+     * el autómata nunca acepta ninguna cadena y el estado inicial es inútil.
+     */
+    private void checkReachabilityFromInitial(ASTNode root,
+            Set<String> initialStates, Set<String> finalStates) {
+        if (initialStates.isEmpty() || finalStates.isEmpty()) return;
+
+        // Construir grafo de adyacencia origen → destinos
+        Map<String, Set<String>> graph = new HashMap<>();
+        buildTransitionGraph(root, graph);
+
+        // BFS desde todos los estados iniciales
+        Set<String> reachable = new HashSet<>(initialStates);
+        java.util.Queue<String> queue = new java.util.LinkedList<>(initialStates);
+        while (!queue.isEmpty()) {
+            String state = queue.poll();
+            for (String next : graph.getOrDefault(state, Collections.emptySet()))
+                if (reachable.add(next)) queue.add(next);
+        }
+
+        // Si ningún estado final es alcanzable → error
+        boolean anyFinalReachable = finalStates.stream().anyMatch(reachable::contains);
+        if (!anyFinalReachable) {
+            String initStr  = String.join(", ", initialStates);
+            String finalStr = String.join(", ", finalStates);
+            Token tok = findStateToken(initialStates.iterator().next());
+            errors.add(new ErrorLSSL(1,
+                "[SemError 016] El estado inicial '" + initStr + "' no puede alcanzar ningún estado final (" + finalStr + "). El autómata nunca aceptará ninguna cadena. | ✏ Revisa las transiciones: debe existir un camino desde '" + initStr + "' hasta al menos un estado final.",
+                tok));
+        }
+    }
+
+    /**
+     * SemError 017: estado final individual que no es alcanzable desde el estado inicial.
+     * Se omite si SemError 016 ya disparó (todos los finales son inalcanzables, ya reportado globalmente).
+     */
+    private void checkUnreachableFinalStates(ASTNode root,
+            Set<String> initialStates, Set<String> finalStates) {
+        if (initialStates.isEmpty() || finalStates.isEmpty()) return;
+
+        // Si SemError 016 ya reportó que NINGÚN final es alcanzable, no duplicar
+        boolean sem016Fired = errors.stream().anyMatch(
+            e -> e.getDescription() != null && e.getDescription().contains("SemError 016"));
+        if (sem016Fired) return;
+
+        // BFS desde el estado inicial
+        Map<String, Set<String>> graph = new HashMap<>();
+        buildTransitionGraph(root, graph);
+
+        Set<String> reachable = new HashSet<>(initialStates);
+        java.util.Queue<String> queue = new java.util.LinkedList<>(initialStates);
+        while (!queue.isEmpty()) {
+            String state = queue.poll();
+            for (String next : graph.getOrDefault(state, Collections.emptySet()))
+                if (reachable.add(next)) queue.add(next);
+        }
+
+        // Reportar cada estado final inalcanzable individualmente
+        for (String fin : finalStates) {
+            if (!reachable.contains(fin)) {
+                Token tok = findStateToken(fin);
+                errors.add(new ErrorLSSL(1,
+                    "[SemError 017] El estado final '" + fin + "' no es alcanzable desde el estado inicial. Nunca podrá ser alcanzado. | ✏ Agrega transiciones que conecten el estado inicial con '" + fin + "', o elimina su declaración FINAL.",
+                    tok));
+            }
+        }
+    }
+
+    /** Construye un mapa origen → conjunto de destinos recorriendo los nodos Transition del AST. */
+    private void buildTransitionGraph(ASTNode node, Map<String, Set<String>> graph) {
+        if (node == null) return;
+        if ("Transition".equals(node.label)) {
+            String origin = null, destination = null;
+            for (ASTNode child : node.children) {
+                if ("From".equals(child.label))  origin      = child.value;
+                else if ("To".equals(child.label)) destination = child.value;
+            }
+            if (origin != null && destination != null)
+                graph.computeIfAbsent(origin, k -> new HashSet<>()).add(destination);
+            return;
+        }
+        for (ASTNode child : node.children) buildTransitionGraph(child, graph);
     }
 
     private Token findStateToken(String stateName) {
