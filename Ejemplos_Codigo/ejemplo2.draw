@@ -1,9 +1,9 @@
 TIPO AFN;
-FONDO AZUL;
+FONDO azul;
 ALFABETO { 'a', 'b' };
+ESTADOS{s0,s1,s2};
 INICIO s0;
-ESTADO s1;
-s0 -> s1 ['a'];
+FINAL s2;
+//s0 -> s1 ['a'];
 s1 -> s2 [EPSILON];
 s2 -> s2 ['b'];
-FINAL s2;
