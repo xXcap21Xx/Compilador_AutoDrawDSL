@@ -78,6 +78,7 @@ public class Compilador extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> jComboBoxOperaciones;
     private javax.swing.JButton           btn_AplicarOperacion;
     private javax.swing.JButton           btn_ConvertirAFD;
+    private javax.swing.JButton           btn_ConvertirEpsilonAFD;
 
     /**
      * Creates new form Compilador
@@ -151,6 +152,10 @@ public class Compilador extends javax.swing.JFrame {
         btn_ConvertirAFD.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 11));
         btn_ConvertirAFD.addActionListener(e -> convertirAFNaAFD());
 
+        btn_ConvertirEpsilonAFD = new javax.swing.JButton("Convertir AFN/E a AFD");
+        btn_ConvertirEpsilonAFD.setFont(new java.awt.Font("Consolas", java.awt.Font.BOLD, 11));
+        btn_ConvertirEpsilonAFD.addActionListener(e -> convertirAFNEpsilonAAFD());
+
         menuBar.add(javax.swing.Box.createHorizontalGlue());
         menuBar.add(new javax.swing.JLabel("  Operación: "));
         menuBar.add(jComboBoxOperaciones);
@@ -158,6 +163,8 @@ public class Compilador extends javax.swing.JFrame {
         menuBar.add(btn_AplicarOperacion);
         menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
         menuBar.add(btn_ConvertirAFD);
+        menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
+        menuBar.add(btn_ConvertirEpsilonAFD);
         menuBar.add(javax.swing.Box.createRigidArea(new java.awt.Dimension(8, 0)));
 
         setJMenuBar(menuBar);
@@ -1884,6 +1891,14 @@ public class Compilador extends javax.swing.JFrame {
     }
 
     private void convertirAFNaAFD() {
+        convertirAFNaAFD(false);
+    }
+
+    private void convertirAFNEpsilonAAFD() {
+        convertirAFNaAFD(true);
+    }
+
+    private void convertirAFNaAFD(boolean requireEpsilon) {
         if (!codeHasBeenCompiled) {
             JOptionPane.showMessageDialog(this, "Primero debes compilar el código.", "Sin compilar", JOptionPane.WARNING_MESSAGE);
             return;
@@ -1896,18 +1911,50 @@ public class Compilador extends javax.swing.JFrame {
         Automata automaton = Automata.fromCompiled(listaSimbolosGlobal, panel_Codigo.getText());
         if (!"AFN".equals(automaton.tipo)) {
             JOptionPane.showMessageDialog(this,
-                "El autómata actual ya está declarado como AFD.\nLa conversión AFN a AFD solo aplica para TIPO AFN;",
+                "El autómata actual ya está declarado como AFD.\nLa conversión solo aplica para TIPO AFN;",
                 "Conversión no necesaria", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        boolean hasEpsilon = hasEpsilonTransitions(automaton);
+        if (requireEpsilon && !hasEpsilon) {
+            JOptionPane.showMessageDialog(this,
+                "El AFN actual no tiene transiciones EPSILON.\nUsa el botón Convertir AFN a AFD.",
+                "Sin epsilon-transiciones", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!requireEpsilon && hasEpsilon) {
+            JOptionPane.showMessageDialog(this,
+                "El AFN actual tiene transiciones EPSILON.\nUsa el botón Convertir AFN/E a AFD.",
+                "Epsilon-transiciones detectadas", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         try {
             Automata result = Automata.toDFA(automaton);
-            new VentanaOperacion(this, "Convertir AFN a AFD", result).setVisible(true);
+            String operationName = requireEpsilon ? "Convertir AFN/E a AFD" : "Convertir AFN a AFD";
+            new VentanaOperacion(this, operationName, result).setVisible(true);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
-                "Error al convertir el AFN a AFD:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                "Error al convertir el autómata a AFD:\n" + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private boolean hasEpsilonTransitions(Automata automaton) {
+        if (automaton == null) return false;
+        for (String sym : automaton.alphabet) {
+            if (isEpsilonSymbolName(sym)) return true;
+        }
+        for (java.util.Map<String, java.util.Set<String>> transitions : automaton.delta.values()) {
+            for (String sym : transitions.keySet()) {
+                if (isEpsilonSymbolName(sym)) return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isEpsilonSymbolName(String sym) {
+        return sym != null && ("EPSILON".equalsIgnoreCase(sym) || "\u03B5".equals(sym));
     }
 
     // ══════════════════════════════════════════════════════════════════════
